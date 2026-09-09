@@ -121,6 +121,10 @@ tailscale serve --bg --https=443 "http://${BIND_ADDR}:${PORT}" || \
 
 # port 80 -> 443 redirect: tailscale serve can't redirect, so a tiny 301
 # responder sits on 127.0.0.1:8081 and serve --http=80 proxies to it.
+# redirect.py normally uses the request's Host header; REDIRECT_HOST is only the
+# fallback for a Host-less request. Derive this CT's MagicDNS name for it.
+REDIRECT_HOST="$(tailscale status --json 2>/dev/null \
+  | python3 -c 'import sys,json; print(json.load(sys.stdin)["Self"]["DNSName"].rstrip("."))' 2>/dev/null || true)"
 install -m 644 -o "$SVC_USER" -g "$SVC_USER" "$APP_DIR/deploy/redirect.py" "$REDIR_PY"
 cat > /etc/systemd/system/resume-tailor-redirect.service <<EOF
 [Unit]
@@ -131,6 +135,7 @@ Wants=network-online.target
 [Service]
 Type=simple
 User=$SVC_USER
+Environment=REDIRECT_HOST=${REDIRECT_HOST:-resume-tailor.example.ts.net}
 ExecStart=/usr/bin/python3 $REDIR_PY
 Restart=always
 RestartSec=3

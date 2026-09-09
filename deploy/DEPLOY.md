@@ -164,6 +164,7 @@ touches `profile/`, `data/` (the tracker DB), or `outputs/`.
 | **Logs** | `pct exec 210 -- journalctl -u resume-tailor -f` |
 | **PDF fidelity** | LibreOffice is installed in the container, so PDFs are converted from the DOCX (not the fpdf2 fallback). |
 | **No `tailscale serve`** | If HTTPS certs aren't enabled you'll see a warning. Enable them, then `pct exec 210 -- tailscale serve --bg --https=443 http://127.0.0.1:8000`. |
+| **Port-80 redirect** | A `resume-tailor-redirect` unit + `serve --http=80` bounce plain http:// to https://. It reads the request's `Host` header; the install script bakes this CT's MagicDNS name into `Environment=REDIRECT_HOST=` as the fallback for Host-less requests. Fix it by hand if the tailnet name changes: edit the unit, `systemctl daemon-reload && systemctl restart resume-tailor-redirect`. `tailscale serve --http=80 off` removes just the redirect. |
 | **Raw port instead of serve** | `pct exec 210 -- tailscale serve reset`, then run the service with `--host 0.0.0.0` (edit the unit) and hit `http://<ct-tailscale-ip>:8000`. Exposes on the container's LAN too. |
 | **Firewall** | Nothing is published to the internet. `tailscale serve` ≠ `tailscale funnel`. |
 | **Resource use** | ~150–300 MB RAM idle; a tailor run spikes CPU for 2–3 min. `DISK_GB=8` fits app + LibreOffice + a few hundred outputs. |
