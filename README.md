@@ -186,6 +186,15 @@ active provider, per-provider model + base URL, `make_pdf`, `page_size`
 (`letter`/`a4`), `accent_color`, default `review_rounds`, match-score weights.
 Env overrides: `RESUME_TAILOR_ENGINE`, `RESUME_TAILOR_MODEL`, `RESUME_TAILOR_HOME`.
 
+<p align="center">
+  <img src="docs/settings.png" alt="resume-tailor Settings tab — pick an AI provider, model, base URL and API key" width="820">
+</p>
+
+API keys entered here are written to `profile/secrets.yaml` (chmod 600,
+git-ignored) — never to `settings.yaml`; an env var always overrides. **Save &
+test** does a one-token call against the provider; **Refresh models** lists what a
+local server (Ollama, LM Studio, …) actually has pulled.
+
 ### Model
 
 For `claude-cli` the aliases `opus` / `sonnet` (default) / `haiku` trade quality
