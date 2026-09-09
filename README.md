@@ -19,6 +19,10 @@ client names and start/end dates from your master profile.
   JD to the best-fitting one by required years + role.
 - Optional one-box **Proxmox LXC + Tailscale** self-host — [`deploy/DEPLOY.md`](deploy/DEPLOY.md).
 
+<p align="center">
+  <img src="docs/dashboard.png" alt="resume-tailor dashboard — submit a JD, and an application tracker with match score, gap and status per run" width="820">
+</p>
+
 ## Quickstart
 
 ```bash

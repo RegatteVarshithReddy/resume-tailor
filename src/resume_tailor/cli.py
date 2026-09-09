@@ -51,6 +51,8 @@ def _record_application(paths: Paths, result) -> str:
         years_required=g.years_required, years_available=g.years_available,
         pdf_engine=result.pdf_engine, warnings=len(result.warnings),
         missing=[m.skill for m in g.missing],
+        match_score=(result.match.score if result.match else None),
+        variant_chosen=(result.variants[0].angle if result.variants else ""),
     )
 
 
