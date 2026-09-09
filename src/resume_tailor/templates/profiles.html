@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Profiles · resume-tailor{% endblock %}
+{% block body %}
+<h1>Resume profiles</h1>
+<p class="muted">Each profile is a full resume — its own companies, dates, education, declared
+years of experience, role family, and section layout. On the dashboard, <b>Auto</b> reads the
+JD's required years + role and picks the matching profile; you can also pick one by hand.</p>
+
+<div class="card">
+  <table>
+    <tr><th>Profile</th><th>Label</th><th>Years</th><th>Role family</th><th></th></tr>
+    {% for r in rows %}
+    <tr>
+      <td><b>{{ r.name }}</b></td>
+      <td>{{ r.label or "—" }}</td>
+      <td>{% if r.years is not none %}{{ r.years }}{% else %}<span class="muted">—</span>{% endif %}</td>
+      <td class="muted">{{ r.role_family or "—" }}</td>
+      <td style="white-space:nowrap">
+        <a class="btn mini" href="/profiles/{{ r.name }}/edit">Edit</a>
+        <form method="post" action="/profiles/{{ r.name }}/clone" style="display:inline">
+          <input type="hidden" name="new_name" value="{{ r.name }}-copy">
+          <button class="mini secondary" type="submit">Clone</button>
+        </form>
+        <form method="post" action="/profiles/{{ r.name }}/rename" style="display:inline"
+              onsubmit="var v=prompt('New name for {{ r.name }} (lowercase, hyphens):','{{ r.name }}');if(!v)return false;this.new_name.value=v;">
+          <input type="hidden" name="new_name" value="">
+          <button class="mini secondary" type="submit">Rename</button>
+        </form>
+        <form method="post" action="/profiles/{{ r.name }}/delete" style="display:inline"
+              onsubmit="return confirm('Delete profile {{ r.name }}? The master_profile.yaml is removed.')">
+          <button class="mini secondary" type="submit">Delete</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0">New profile</h2>
+  <form method="post" action="/profiles/new" class="inline">
+    <div>
+      <label>Name</label>
+      <input name="name" placeholder="e.g. ai-engineer" required
+             pattern="[a-z0-9][a-z0-9-]*" title="lowercase letters, digits, hyphens">
+    </div>
+    <div style="flex:0"><button type="submit">Create blank</button></div>
+  </form>
+  <p class="muted" style="margin-bottom:0">…or use <b>Clone</b> above to start from an existing profile.</p>
+</div>
+{% endblock %}

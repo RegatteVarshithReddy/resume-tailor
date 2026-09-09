@@ -1,0 +1,17 @@
+services:
+  resume-tailor:
+    build: .
+    image: resume-tailor
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./rt-data:/data            # profile/, data/ (tracker DB), outputs/
+    environment:
+      # set the one(s) you use — or leave blank and configure on the Settings tab
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+      GEMINI_API_KEY: "${GEMINI_API_KEY:-}"
+      OPENROUTER_API_KEY: "${OPENROUTER_API_KEY:-}"
+      RESUME_TAILOR_ENGINE: "${RESUME_TAILOR_ENGINE:-}"
+      RESUME_TAILOR_MODEL: "${RESUME_TAILOR_MODEL:-}"
+    restart: unless-stopped

@@ -1,0 +1,22 @@
+# --- secrets & personal data (never commit) ---
+.env
+/profile/
+/jds/
+
+# --- runtime data (project root only — NOT src/resume_tailor/data/) ---
+/data/
+/outputs/
+/rt-data/
+
+# --- python / build ---
+.venv/
+/build/
+/dist/
+*.egg-info/
+__pycache__/
+*.pyc
+*.migrated
+
+# --- tool caches ---
+.pytest_cache/
+.ruff_cache/

@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · resume-tailor{% endblock %}
+{% block body %}
+<h1>New application</h1>
+
+{% if not profiles %}
+<div class="card bad">No master profiles found. Run <code>resume-tailor init</code> and edit
+<code>profile/profiles/default/master_profile.yaml</code>.</div>
+{% endif %}
+
+<form method="post" action="/run" class="card">
+  <div class="row">
+    <div>
+      <label>Profile</label>
+      <select name="profile">
+        <option value="auto" selected>Auto — match to JD</option>
+        {% for p in profiles %}<option value="{{ p }}">{{ p }}</option>{% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>Company / end client</label>
+      <input name="company" placeholder="optional — else taken from JD">
+    </div>
+    <div>
+      <label>Target role</label>
+      <input name="role" placeholder="optional — else taken from JD">
+    </div>
+  </div>
+
+  <label>Job description / vendor requirement</label>
+  <textarea name="jd" required placeholder="Paste the full requirement here…"></textarea>
+
+  <div class="row">
+    <div>
+      <label>Model</label>
+      <select name="model">
+        {% for key, label in model_choices %}
+        <option value="{{ key }}" title="{{ label }}" {{ 'selected' if key == model_current }}>{{ key }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>Tailoring mode</label>
+      <select name="mode">
+        <option value="aggressive">Aggressive — rewrite projects to match the JD</option>
+        <option value="conservative">Conservative — rephrase real experience only</option>
+      </select>
+    </div>
+    <div>
+      <label>Max bullets / role</label>
+      <input type="number" name="bullets" value="{{ default_bullets }}" min="3" max="10">
+    </div>
+    <div>
+      <label>PDF</label>
+      <select name="pdf"><option value="1">Yes</option><option value="0">No (faster)</option></select>
+    </div>
+    <div>
+      <label>Polish rounds</label>
+      <select name="review_rounds">
+        {% for n in [0, 1, 2, 3] %}
+        <option value="{{ n }}" {{ 'selected' if n == review_rounds }}>{{ n }}{{ ' (no self-review)' if n == 0 }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <label>Variants <span class="muted">— tick 2+ to produce a side-by-side comparison (slower)</span></label>
+  <div class="chip" style="background:transparent;padding:0">
+    {% for a in variant_angles %}
+    <label style="display:inline-flex;gap:.3rem;align-items:center;font-weight:400;margin:.1rem .8rem .1rem 0">
+      <input type="checkbox" name="variants" value="{{ a }}" style="width:auto"
+             {{ 'checked' if a in picked_variants }}> {{ a }}
+    </label>
+    {% endfor %}
+  </div>
+
+  <button type="submit">Generate resume + cover letter</button>
+  <span class="muted"> · runs in the background; default ≈ 4 AI calls, ~8–12 min</span>
+</form>
+
+{% if jobs %}
+<h2>Running now</h2>
+<div class="card">
+  {% for j in jobs %}
+  <div><a href="/jobs/{{ j.id }}">{{ j.kind }} · {{ j.state }}</a>
+    <span class="muted">{{ j.id }}</span></div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<h2>Pipeline</h2>
+<div class="card">
+  {% for s in statuses %}
+  <a class="chip" href="/apps?status={{ s }}">{{ s }} · {{ counts.get(s, 0) }}</a>
+  {% endfor %}
+</div>
+
+<h2>Recent applications <span class="muted">· <a href="/apps">see all</a></span></h2>
+<div class="card">
+{% if recent %}
+<table>
+  <tr><th>When</th><th>Company / role</th><th>Profile</th><th>Match</th><th>Gap</th><th>Status</th></tr>
+  {% for a in recent %}
+  <tr>
+    <td class="muted">{{ a.created_at | int | timestamp }}</td>
+    <td><a href="/apps/{{ a.id }}">{{ a.company or "—" }}</a><br>
+        <span class="muted">{{ a.role or "" }}</span></td>
+    <td>{{ a.profile }}</td>
+    <td>{% if a.match_score is not none %}<b>{{ a.match_score | int }}</b>/100{% else %}<span class="muted">—</span>{% endif %}</td>
+    <td>{{ a.gap_matched }}✓ / {{ a.gap_partial }}~ /
+        <span class="{{ 'warn' if a.gap_missing else '' }}">{{ a.gap_missing }}✗</span></td>
+    <td><span class="pill s-{{ a.status }}">{{ a.status }}</span></td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p class="muted">No applications yet.</p>
+{% endif %}
+</div>
+{% endblock %}

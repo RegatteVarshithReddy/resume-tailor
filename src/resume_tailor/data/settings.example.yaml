@@ -1,0 +1,68 @@
+# ── AI provider ──────────────────────────────────────────────────────────────
+# `engine` is the active provider (a key of the list below). Easiest to set this
+# and the per-provider model/base URL on the web Settings tab; `resume-tailor
+# engines` shows what's configured.
+#
+#   claude-cli   local `claude` CLI — your Claude Code subscription, no API bill  (default)
+#   anthropic    Anthropic API (Claude)          key: ANTHROPIC_API_KEY   + pip install 'resume-tailor[api]'
+#   openai       OpenAI / ChatGPT API            key: OPENAI_API_KEY
+#   gemini       Google Gemini API               key: GEMINI_API_KEY
+#   openrouter   OpenRouter (many models, 1 key) key: OPENROUTER_API_KEY
+#   ollama       local models via Ollama         no key
+#   custom       any other OpenAI-compatible endpoint (LM Studio, vLLM, llama.cpp, a gateway…)
+engine: claude-cli
+
+claude_binary: claude
+
+# Model for the claude-cli provider. Aliases opus | sonnet | haiku map to the
+# right id per provider; any other value passes straight through. `resume-tailor
+# models` lists them. Override a single run with `--model` or the dashboard.
+model: sonnet
+
+# Per-provider model + base URL. Anything omitted falls back to a sane preset.
+# API KEYS DO NOT GO HERE — they live in profile/secrets.yaml (chmod 600,
+# git-ignored) or an environment variable, which always wins.
+providers:
+  anthropic:
+    model: claude-sonnet-5
+  openai:
+    model: gpt-4o
+    base_url: https://api.openai.com/v1
+  gemini:
+    model: gemini-2.5-flash
+    base_url: https://generativelanguage.googleapis.com/v1beta/openai
+  openrouter:
+    model: anthropic/claude-3.7-sonnet
+    base_url: https://openrouter.ai/api/v1
+  ollama:
+    model: llama3.1
+    base_url: http://localhost:11434/v1
+  custom:
+    model: ""
+    base_url: http://localhost:1234/v1
+
+# Legacy fields — still read and migrated into `providers` above if that's unset.
+api_model: claude-sonnet-5
+ollama_model: llama3.1
+ollama_url: http://localhost:11434
+
+llm_timeout: 240
+
+# ── Output ──────────────────────────────────────────────────────────────────
+make_pdf: true
+page_size: letter            # letter | a4
+accent_color: "#1F4E79"
+
+# ── Pipeline ────────────────────────────────────────────────────────────────
+# Self-critique/revise passes after the first draft (0 disables). Each is one
+# extra AI call; default run = extract + draft + review_rounds. Dashboard has a
+# per-run override.
+review_rounds: 2
+
+# Deterministic 0-100 match score weights (must sum <= 1; a subtractive penalty
+# for stretch bullets / uncovered weight-3 skills is applied on top).
+# match_weights:
+#   coverage: 0.55
+#   years: 0.20
+#   domain: 0.10
+#   archetype: 0.10

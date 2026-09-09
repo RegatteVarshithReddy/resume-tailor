@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block title %}{{ app.company or "Application" }} · resume-tailor{% endblock %}
+{% block body %}
+<p><a href="/apps">← Applications</a></p>
+<h1>{{ app.company or "—" }} <span class="muted">· {{ app.role or "" }}</span></h1>
+<p>
+  <span class="pill s-{{ app.status }}">{{ app.status }}</span>
+  <span class="chip">{{ app.profile }}</span>
+  <span class="chip">{{ app.mode }}</span>
+  <span class="chip">pdf: {{ app.pdf_engine or "none" }}</span>
+  {% if app.variant_chosen %}<span class="chip">variant: {{ app.variant_chosen }}</span>{% endif %}
+  <span class="muted"> · {{ app.created_at | timestamp }} · {{ app.id }}</span>
+</p>
+
+{% if match %}
+<div class="card">
+  <h2 style="margin-top:0">Match {{ match.score }}<span class="muted">/100</span></h2>
+  <div class="kv" style="max-width:420px">
+    {% for k, v in match.breakdown.items() %}
+    <div>{{ k }}</div><div>{{ (v * 100) | round | int }}%</div>
+    {% endfor %}
+  </div>
+  {% if match.weak_points %}
+  <p style="margin:.8rem 0 .2rem"><b>What's weak — fix or be ready to defend:</b></p>
+  <ul style="margin:.2rem 0">{% for w in match.weak_points %}<li>{{ w }}</li>{% endfor %}</ul>
+  {% else %}<p class="muted">Nothing flagged.</p>{% endif %}
+</div>
+{% endif %}
+
+{% if coverage and coverage.total %}
+<div class="card">
+  <h2 style="margin-top:0">Coverage
+    <span class="muted">— {{ (coverage.fraction * 100) | round | int }}% ·
+    {{ coverage.full }}/{{ coverage.total }} must-haves fully covered ·
+    {{ coverage.stretch }} stretch bullet{{ 's' if coverage.stretch != 1 }}</span></h2>
+  {% if coverage.gaps %}
+  <p style="margin:.2rem 0"><b>Not fully covered:</b>
+    {% for g in coverage.gaps %}<span class="chip {{ 'warn' if g.weight == 3 }}">{{ g.skill }}
+      (w{{ g.weight }}, {{ g.status }})</span>{% endfor %}</p>
+  {% endif %}
+  {% for g in coverage.gates %}
+    {% if g.verdict != 'met' %}<div class="{{ 'bad' if g.verdict == 'unmet' else 'warn' }}">
+      hard gate: {{ g.gate }} — {{ g.verdict }}</div>{% endif %}
+  {% endfor %}
+  <p class="muted" style="margin-bottom:0">Full table in <code>coverage.md</code> below.</p>
+</div>
+{% endif %}
+
+{% if variants %}
+<div class="card">
+  <h2 style="margin-top:0">Variants</h2>
+  <table>
+    <tr><th>Angle</th><th>Match</th><th>Coverage</th><th>Stretch</th><th>Files</th><th></th></tr>
+    {% for v in variants %}
+    <tr>
+      <td><b>{{ v.angle }}</b>{{ ' ✓' if v.angle == app.variant_chosen }}</td>
+      <td>{{ v.score }}/100</td>
+      <td>{{ v.coverage }}%</td>
+      <td>{{ v.stretch }}</td>
+      <td>{% for f in v.files if f.name in ('resume.pdf','resume.docx','cover_letter.pdf','match.md') %}
+          <a href="{{ f.url }}">{{ f.name }}</a>{{ ' · ' if not loop.last }}{% endfor %}</td>
+      <td>
+        <form method="post" action="/apps/{{ app.id }}/promote" style="display:inline">
+          <input type="hidden" name="angle" value="{{ v.angle }}">
+          <button class="mini secondary" type="submit">Promote</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  <p class="muted" style="margin-bottom:0">"Promote" copies that variant's files to the run
+  root so the tracked resume is the one you picked.</p>
+</div>
+{% endif %}
+
+<div class="grid2">
+  <div class="card">
+    <h2 style="margin-top:0">Downloads</h2>
+    {% for f in files %}
+      <div><a href="{{ f.url }}">{{ f.label }}</a> <span class="muted">({{ f.name }})</span></div>
+    {% else %}
+      <p class="muted">No files found at <code>{{ app.out_dir }}</code>.</p>
+    {% endfor %}
+    <form method="post" action="/apps/{{ app.id }}/rerender">
+      <button class="secondary" type="submit">Re-render docs from tailored_profile.yaml</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2 style="margin-top:0">Status &amp; notes</h2>
+    <form method="post" action="/apps/{{ app.id }}/status">
+      <label>Status</label>
+      <select name="status">
+        {% for s in statuses %}<option value="{{ s }}" {{ 'selected' if s == app.status }}>{{ s }}</option>{% endfor %}
+      </select>
+      <button type="submit">Update</button>
+    </form>
+    <form method="post" action="/apps/{{ app.id }}/note">
+      <label>Notes</label>
+      <textarea name="notes" style="min-height:120px">{{ app.notes }}</textarea>
+      <button type="submit">Save notes</button>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0">Gap summary</h2>
+  <div class="kv">
+    <div>Matched</div><div class="ok">{{ app.gap_matched }}</div>
+    <div>Partial</div><div>{{ app.gap_partial }}</div>
+    <div>Missing</div><div class="{{ 'warn' if app.gap_missing }}">{{ app.gap_missing }}</div>
+    <div>Experience</div>
+    <div class="{{ 'bad' if app.years_required and app.years_available and (app.years_available + 0.5 < app.years_required) }}">
+      {% if app.years_required %}have ~{{ app.years_available }} yr / need ~{{ app.years_required }} yr{% else %}—{% endif %}</div>
+    <div>Locked-field warnings</div><div class="{{ 'warn' if app.warnings }}">{{ app.warnings }}</div>
+  </div>
+  {% if missing %}
+  <p style="margin-top:.8rem"><b>Missing from this profile — review before sending:</b></p>
+  <p>{% for m in missing %}<span class="chip">{{ m }}</span>{% endfor %}</p>
+  {% endif %}
+</div>
+
+{% if match_md %}
+<div class="card"><h2 style="margin-top:0">match.md</h2><pre>{{ match_md }}</pre></div>
+{% endif %}
+{% if coverage_md %}
+<div class="card"><h2 style="margin-top:0">coverage.md</h2><pre>{{ coverage_md }}</pre></div>
+{% endif %}
+{% if comparison_md %}
+<div class="card"><h2 style="margin-top:0">comparison.md</h2><pre>{{ comparison_md }}</pre></div>
+{% endif %}
+{% if gap_report %}
+<div class="card"><h2 style="margin-top:0">gap_report.md</h2><pre>{{ gap_report }}</pre></div>
+{% endif %}
+{% if cover_letter %}
+<div class="card"><h2 style="margin-top:0">Cover letter</h2><pre>{{ cover_letter }}</pre></div>
+{% endif %}
+
+<div class="card">
+  <form method="post" action="/apps/{{ app.id }}/delete"
+        onsubmit="return confirm('Remove this row from the tracker? (files on disk are kept)')">
+    <button class="secondary" type="submit">Delete from tracker</button>
+  </form>
+</div>
+{% endblock %}

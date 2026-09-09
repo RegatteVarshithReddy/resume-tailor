@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+{% block title %}Edit {{ name }} · resume-tailor{% endblock %}
+
+{% macro fld(label, name, value, ph='', type='text') %}
+<div><label>{{ label }}</label>
+<input type="{{ type }}" name="{{ name }}" value="{{ value if value is not none else '' }}" placeholder="{{ ph }}"></div>
+{% endmacro %}
+
+{% macro ta(label, name, value, rows=3, ph='') %}
+<label>{{ label }}</label>
+<textarea name="{{ name }}" rows="{{ rows }}" placeholder="{{ ph }}" style="min-height:0">{{ value if value is not none else '' }}</textarea>
+{% endmacro %}
+
+{% macro row_exp(i, e) %}
+<fieldset class="row-item">
+  <legend>experience {{ i }}</legend>
+  <div class="inline">
+    {{ fld('id', 'exp.'~i~'.id', e.id if e, 'techm-ai') }}
+    {{ fld('order', 'exp.'~i~'.order', i, '', 'number') }}
+    <div style="flex:0"><button type="button" class="mini secondary" data-rm>remove</button></div>
+  </div>
+  <div class="inline">
+    {{ fld('client (locked)', 'exp.'~i~'.client', e.client if e) }}
+    {{ fld('employer (locked)', 'exp.'~i~'.employer', e.employer if e) }}
+    {{ fld('location (locked)', 'exp.'~i~'.location', e.location if e) }}
+  </div>
+  <div class="inline">
+    {{ fld('role', 'exp.'~i~'.role', e.role if e) }}
+    {{ fld('start (locked, YYYY-MM)', 'exp.'~i~'.start', e.start if e, '2024-01') }}
+    {{ fld('end (locked, YYYY-MM or Present)', 'exp.'~i~'.end', e.end if e, 'Present') }}
+  </div>
+  {{ ta('environment (comma separated)', 'exp.'~i~'.environment', (e.environment | join(', ')) if e else '', 2) }}
+  {{ ta('engagement summary (1-2 lines)', 'exp.'~i~'.summary', e.summary if e else '', 2) }}
+  {{ ta('bullets (one per line)', 'exp.'~i~'.bullets', (e.bullets | join('\n')) if e else '', 4) }}
+  {{ ta('bullet library (one per line)', 'exp.'~i~'.bullet_library', (e.bullet_library | join('\n')) if e else '', 3) }}
+</fieldset>
+{% endmacro %}
+
+{% macro row_skill(i, g) %}
+<fieldset class="row-item">
+  <legend>skill group {{ i }}</legend>
+  <div class="inline">
+    {{ fld('category', 'skill.'~i~'.category', g.category if g, 'AI & Machine Learning') }}
+    {{ fld('order', 'skill.'~i~'.order', i, '', 'number') }}
+    <div style="flex:0"><button type="button" class="mini secondary" data-rm>remove</button></div>
+  </div>
+  {{ ta('skills (comma separated)', 'skill.'~i~'.skills', (g.skills | join(', ')) if g else '', 2, 'Python, SQL, PyTorch') }}
+</fieldset>
+{% endmacro %}
+
+{% macro row_edu(i, e) %}
+<fieldset class="row-item">
+  <legend>education {{ i }}</legend>
+  <div class="inline">
+    {{ fld('degree', 'edu.'~i~'.degree', e.degree if e, 'Master of Science') }}
+    {{ fld('field', 'edu.'~i~'.field', e.field_of_study if e, 'Data Science') }}
+    {{ fld('order', 'edu.'~i~'.order', i, '', 'number') }}
+    <div style="flex:0"><button type="button" class="mini secondary" data-rm>remove</button></div>
+  </div>
+  <div class="inline">
+    {{ fld('institution', 'edu.'~i~'.institution', e.institution if e) }}
+    {{ fld('location', 'edu.'~i~'.location', e.location if e) }}
+    {{ fld('year', 'edu.'~i~'.year', e.year if e, '2023') }}
+  </div>
+</fieldset>
+{% endmacro %}
+
+{% macro row_cert(i, c) %}
+<fieldset class="row-item">
+  <legend>certification {{ i }}</legend>
+  <div class="inline">
+    {{ fld('name', 'cert.'~i~'.name', c.name if c, 'AWS Solutions Architect – Associate') }}
+    {{ fld('issuer', 'cert.'~i~'.issuer', c.issuer if c) }}
+    {{ fld('year', 'cert.'~i~'.year', c.year if c) }}
+    {{ fld('order', 'cert.'~i~'.order', i, '', 'number') }}
+    <div style="flex:0"><button type="button" class="mini secondary" data-rm>remove</button></div>
+  </div>
+</fieldset>
+{% endmacro %}
+
+{% macro row_sec(i, s, is_custom) %}
+<fieldset class="row-item">
+  <legend>section {{ i }}</legend>
+  <div class="inline">
+    {% if is_custom %}
+      {{ fld('key (must start with custom:)', 'sec.'~i~'.key', s.key if s, 'custom:projects') }}
+    {% else %}
+      <div><label>section</label>
+        <input type="text" value="{{ s.key }}" disabled>
+        <input type="hidden" name="sec.{{ i }}.key" value="{{ s.key }}"></div>
+    {% endif %}
+    <div style="flex:0"><label>show</label>
+      <input type="checkbox" name="sec.{{ i }}.show" value="1"
+             {% if s is none or s.show %}checked{% endif %}></div>
+    {{ fld('order', 'sec.'~i~'.order', i, '', 'number') }}
+    {{ fld('max', 'sec.'~i~'.max_items', s.max_items if s, '', 'number') }}
+  </div>
+  <div class="inline">
+    {{ fld('heading override', 'sec.'~i~'.title', s.title if s) }}
+    <div><label>style</label>
+      <select name="sec.{{ i }}.style">
+        {% set cur = s.style if s else '' %}
+        <option value="" {{ 'selected' if not cur }}>(default)</option>
+        {% for st in ['paragraph','bullets','grouped','list'] %}
+        <option value="{{ st }}" {{ 'selected' if cur == st }}>{{ st }}</option>
+        {% endfor %}
+      </select></div>
+    {{ fld('date format', 'sec.'~i~'.date_format', s.date_format if s, '%b %Y') }}
+  </div>
+  {% if is_custom %}
+  {{ ta('content (one item per line)', 'sec.'~i~'.content', (s.content | join('\n')) if s else '', 3) }}
+  {% endif %}
+</fieldset>
+{% endmacro %}
+
+
+{% block body %}
+<p><a href="/profiles">← Profiles</a></p>
+<h1>Edit profile <span class="muted">· {{ name }}</span></h1>
+
+{% if error %}<div class="err">{{ error }}</div>{% endif %}
+
+<form method="post" action="/profiles/{{ name }}">
+
+<div class="card">
+  <h2 style="margin-top:0">Profile metadata</h2>
+  <p class="muted" style="margin-top:0">Drives <b>Auto</b> routing on the dashboard and the
+  opening line of the tailored summary.</p>
+  <div class="inline">
+    {{ fld('Picker label', 'meta.label', mp.meta.label, 'Senior Data Engineer') }}
+    {{ fld('Years of experience', 'meta.years_experience', mp.meta.years_experience, '7', 'number') }}
+    {{ fld('Seniority', 'meta.seniority', mp.meta.seniority, 'senior') }}
+  </div>
+  {{ ta('Role family (comma or line separated — matched against the JD role/domains)',
+        'meta.role_family', mp.meta.role_family | join(', '), 2, 'data engineer, etl, pipelines') }}
+  {{ ta('Notes (not printed)', 'meta.notes', mp.meta.notes, 2) }}
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0">Contact</h2>
+  <div class="inline">
+    {{ fld('Name', 'contact.name', mp.contact.name) }}
+    {{ fld('Title', 'contact.title', mp.contact.title) }}
+  </div>
+  <div class="inline">
+    {{ fld('Email', 'contact.email', mp.contact.email) }}
+    {{ fld('Phone', 'contact.phone', mp.contact.phone) }}
+    {{ fld('Location', 'contact.location', mp.contact.location) }}
+  </div>
+  <div class="inline">
+    {{ fld('LinkedIn', 'contact.linkedin', mp.contact.linkedin) }}
+    {{ fld('Website', 'contact.website', mp.contact.website) }}
+    {{ fld('Work authorization', 'contact.work_authorization', mp.contact.work_authorization) }}
+  </div>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0">Professional summary</h2>
+  <p class="muted" style="margin-top:0">Rewritten on every run — this is the starting point.</p>
+  <textarea name="summary" rows="5">{{ mp.summary }}</textarea>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0">Experience</h2>
+  <p class="muted" style="margin-top:0"><b>Locked every run:</b> client, employer, location,
+  start, end. Rewritten: role wording, summary, bullets. <code>order</code> sets display order;
+  clear a row to delete it.</p>
+  {% set exp = mp.experience %}
+  {% for e in exp %}{{ row_exp(loop.index0, e) }}{% endfor %}
+  {% for k in range(spare) %}{{ row_exp(exp|length + k, none) }}{% endfor %}
+  <a class="btn mini secondary" href="?rows={{ spare + 3 }}">+ 3 more experience rows</a>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0">Skill groups</h2>
+  {% set sg = mp.skill_groups %}
+  {% for g in sg %}{{ row_skill(loop.index0, g) }}{% endfor %}
+  {% for k in range(spare) %}{{ row_skill(sg|length + k, none) }}{% endfor %}
+  <a class="btn mini secondary" href="?rows={{ spare + 3 }}">+ 3 more skill rows</a>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0">Education</h2>
+  {% set ed = mp.education %}
+  {% for e in ed %}{{ row_edu(loop.index0, e) }}{% endfor %}
+  {% for k in range(spare) %}{{ row_edu(ed|length + k, none) }}{% endfor %}
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0">Certifications</h2>
+  {% set ct = mp.certifications %}
+  {% for c in ct %}{{ row_cert(loop.index0, c) }}{% endfor %}
+  {% for k in range(spare) %}{{ row_cert(ct|length + k, none) }}{% endfor %}
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0">Extra bullets</h2>
+  <p class="muted" style="margin-top:0">One per line. Surfaced by a <code>custom:</code> section
+  if you add one, otherwise unused.</p>
+  <textarea name="extra_bullets" rows="4">{{ mp.extra_bullets | join('\n') }}</textarea>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0">Section layout</h2>
+  <p class="muted" style="margin-top:0">Untick to hide a section. <code>order</code> sets the
+  vertical order. <code>max</code> caps items (bullets per role / skills per group / entries).
+  Custom sections render their content verbatim.</p>
+  {% for s in core_sections %}{{ row_sec(loop.index0, s, false) }}{% endfor %}
+  {% set coff = core_sections|length %}
+  {% for s in custom_sections %}{{ row_sec(coff + loop.index0, s, true) }}{% endfor %}
+  {% for k in range(spare) %}{{ row_sec(coff + custom_sections|length + k, none, true) }}{% endfor %}
+</div>
+
+<button type="submit">Save profile</button>
+<a class="btn secondary" href="/profiles">Cancel</a>
+</form>
+
+<script>
+document.querySelectorAll('[data-rm]').forEach(function(b){
+  b.addEventListener('click', function(){
+    var fs = b.closest('fieldset');
+    fs.classList.toggle('rm');
+    fs.querySelectorAll('input:not([type=hidden]),textarea,select').forEach(function(el){
+      if(el.type==='checkbox'){el.checked=false;} else {el.value='';}
+    });
+  });
+});
+</script>
+{% endblock %}

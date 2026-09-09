@@ -1,0 +1,27 @@
+Senior Backend Engineer (Contract, 12 months, W2)
+Client: Large Healthcare Payer  |  Location: Remote (US)
+
+We are looking for a Senior Backend Engineer to join a platform modernization
+initiative. This is a hands-on role building event-driven microservices.
+
+Must have:
+- 8+ years of professional software engineering experience
+- Strong Go (Golang) and Python
+- Deep experience with gRPC and Protocol Buffers
+- Event streaming with Apache Kafka
+- Kubernetes and Helm in production
+- PostgreSQL and schema design
+- GCP (GKE, Pub/Sub, Cloud SQL)
+- Observability: OpenTelemetry, Prometheus, Grafana
+
+Nice to have:
+- FHIR / HL7 healthcare data standards
+- Terraform
+- Experience mentoring engineers
+- ArgoCD / GitOps
+
+Responsibilities:
+- Design and build gRPC microservices in Go
+- Own Kafka topic design and consumer reliability
+- Drive SLOs and on-call quality
+- Partner with data engineering on the analytics pipeline

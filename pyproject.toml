@@ -1,0 +1,62 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "resume-tailor"
+version = "0.3.0"
+description = "Tailor an end-to-end resume + cover letter to a job requirement — CLI + web dashboard + application tracker, any AI provider, clients and work durations stay locked."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Varshith Regatte" }]
+keywords = ["resume", "cover-letter", "ats", "job-search", "llm", "docx", "cli"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Environment :: Web Environment",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Office/Business",
+    "Topic :: Text Processing :: Markup",
+]
+dependencies = [
+    "typer>=0.12",
+    "PyYAML>=6.0",
+    "python-docx>=1.1",
+    "fpdf2>=2.7",
+    "Jinja2>=3.1",
+]
+
+[project.optional-dependencies]
+api = ["anthropic>=0.40"]          # only for `--engine anthropic` (native SDK)
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[project.urls]
+Homepage = "https://github.com/RegatteVarshithReddy/resume-tailor"
+Issues = "https://github.com/RegatteVarshithReddy/resume-tailor/issues"
+
+[project.scripts]
+resume-tailor = "resume_tailor.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+resume_tailor = ["data/*.yaml", "templates/*.html"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+# real-bug rules only (pyflakes); cosmetic E/I/UP left off to avoid a mass reformat
+select = ["F"]

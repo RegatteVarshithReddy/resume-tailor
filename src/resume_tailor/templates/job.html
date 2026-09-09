@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Job {{ job.id }} · resume-tailor{% endblock %}
+{% block body %}
+<h1>Working…</h1>
+<div class="card">
+  <p><b>{{ job.kind }}</b> · state: <span id="state">{{ job.state }}</span>
+     <span class="muted">{{ job.id }}</span></p>
+  <pre id="log">{{ job.log }}</pre>
+  <p id="err" class="bad" style="white-space:pre-wrap">{{ job.error }}</p>
+  <p id="done" style="display:none"><a class="btn" id="donelink" href="#">View application →</a></p>
+</div>
+<script>
+const jid = {{ job.id | tojson }};
+async function poll(){
+  try{
+    const r = await fetch(`/jobs/${jid}.json`, {cache:"no-store"});
+    const j = await r.json();
+    document.getElementById("state").textContent = j.state;
+    document.getElementById("log").textContent = j.log || "";
+    document.getElementById("err").textContent = j.error || "";
+    if(j.state === "done"){
+      const l = document.getElementById("donelink");
+      l.href = j.app_id ? `/apps/${j.app_id}` : "/apps";
+      document.getElementById("done").style.display = "block";
+      return;
+    }
+    if(j.state === "error") return;
+    setTimeout(poll, 1500);
+  }catch(e){ setTimeout(poll, 3000); }
+}
+poll();
+</script>
+{% endblock %}

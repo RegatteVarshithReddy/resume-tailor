@@ -1,0 +1,118 @@
+# ============================================================================
+#  MASTER PROFILE  —  <Your Name>
+#
+#  This is the single source of truth for every tailoring run. Fill it in once
+#  with your REAL resume, as completely as you can.
+#
+#  LOCKED every run   (never rewritten, force-reverted after each run):
+#      each experience entry's  client, employer, location, start, end
+#  REWRITTEN every run (tailored to the job requirement):
+#      summary, skill_groups (and their order), each entry's role wording,
+#      its summary line, and its bullets
+#
+#  The richer skill_groups, each entry's `environment`, and `bullet_library`
+#  are, the better the tailored output. Put everything you have ever worked
+#  with in — it is raw material the tailor draws on, not the final resume.
+#
+#  Keep several profiles (one per target role / seniority). On the dashboard,
+#  "Auto" reads the JD's required years + role and picks the matching profile.
+# ============================================================================
+
+# meta: optional. Drives "Auto" profile routing + the opening line of the summary.
+#   Manage it in the web UI (Profiles → Edit) or `resume-tailor profile set`.
+# meta:
+#   label: "Senior Software Engineer"          # shown in the picker
+#   role_family: ["software engineer", "backend", "platform"]   # matched vs the JD
+#   years_experience: 8                        # declared years — used for routing
+#   seniority: "senior"
+#   notes: ""
+
+contact:
+  name: "Ada Lovelace"
+  title: "Senior Software Engineer"
+  email: "ada@example.com"
+  phone: "(555) 010-0000"
+  location: "Brooklyn, NY"
+  linkedin: ""                      # full URL, or leave "" to hide
+  website: ""
+  work_authorization: ""            # e.g. "US Citizen", "H-1B", "STEM OPT (EAD)" — or "" to hide
+
+summary: >-
+  One short paragraph describing who you are professionally. This text is
+  replaced on every run with a version aimed at the target job, so treat it
+  as a starting point, not the final wording.
+
+skill_groups:
+  - category: "Languages"
+    skills: ["Python", "Go", "TypeScript", "SQL", "Bash"]
+  - category: "Frameworks & Libraries"
+    skills: ["FastAPI", "Django", "React", "pytest"]
+  - category: "Data & Infra"
+    skills: ["PostgreSQL", "Redis", "Kafka", "Docker", "Kubernetes", "Terraform"]
+  - category: "Cloud"
+    skills: ["AWS (EC2, S3, RDS, Lambda)", "GCP", "CI/CD", "GitHub Actions"]
+
+experience:
+  - id: "acme-senior"              # any unique short slug
+    client: "Acme Corp"            # LOCKED — the end client / where the work happened
+    employer: "Consulting LLC"     # LOCKED — your vendor/employer of record; "" if you were direct
+    role: "Senior Software Engineer"
+    location: "New York, NY"       # LOCKED
+    start: "2022-03"              # LOCKED — YYYY-MM
+    end: "Present"                # LOCKED — YYYY-MM or "Present"
+    environment: ["Python", "FastAPI", "PostgreSQL", "AWS", "Docker", "Kubernetes", "Kafka"]
+    summary: "One line of context for this engagement."
+    bullets:
+      - "An accomplishment with a concrete result or number. Rewritten each run."
+      - "Another responsibility or outcome, phrased for impact."
+      - "A third bullet — keep each to one or two lines."
+    bullet_library:
+      - "Extra bullets that are true but not always shown. The tailor pulls"
+      - "from here when the job calls for something these describe."
+
+  - id: "startup-mid"
+    client: "Startup Inc"
+    employer: ""                   # direct hire — no separate end client
+    role: "Software Engineer"
+    location: "Remote"             # LOCKED
+    start: "2020-01"              # LOCKED
+    end: "2022-02"                # LOCKED
+    environment: ["Python", "Django", "React", "PostgreSQL", "Redis", "GCP"]
+    summary: "One line of context."
+    bullets:
+      - "What you built or owned, and the effect it had."
+      - "A second bullet."
+    bullet_library: []
+
+education:
+  - degree: "Master of Science"
+    field: "Computer Science"
+    institution: "State University"
+    location: "Newark, NJ"
+    year: "2019"
+  - degree: "Bachelor of Science"
+    field: "Computer Engineering"
+    institution: "Some College"
+    location: "Boston, MA"
+    year: "2017"
+
+certifications: []                 # e.g. ["AWS Certified Solutions Architect – Associate (2024)"]
+
+extra_bullets:
+  - "Optional line items not tied to one job: open-source work, publications,"
+  - "a homelab, talks, side projects. Shown near the end when relevant."
+
+# layout: optional. Which sections appear, in what order, with what formatting.
+#   Omit it entirely for the classic five-section resume. Edit in the web UI
+#   (Profiles → Edit → Section layout). `show: false` hides a section.
+#   `max_items` caps bullets per role / skills per group / entries.
+#   A "custom:<name>" section prints its `content` list verbatim.
+# layout:
+#   sections:
+#     - {key: summary,        show: true, style: paragraph}
+#     - {key: skills,         show: true, style: grouped, max_items: 12}
+#     - {key: experience,     show: true, style: bullets, max_items: 6, date_format: "%b %Y"}
+#     - {key: "custom:selected-projects", show: true, title: "Selected Projects",
+#        content: ["A standout project, one line.", "Another, with the result."]}
+#     - {key: education,      show: true}
+#     - {key: certifications, show: true}

@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Applications · resume-tailor{% endblock %}
+{% block body %}
+<h1>Applications</h1>
+
+<div class="card">
+  <form method="get" action="/apps" class="row">
+    <div>
+      <label>Status</label>
+      <select name="status" onchange="this.form.submit()">
+        <option value="">all</option>
+        {% for s in statuses %}
+        <option value="{{ s }}" {{ 'selected' if s == f_status }}>{{ s }} ({{ counts.get(s,0) }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>Profile</label>
+      <select name="profile" onchange="this.form.submit()">
+        <option value="">all</option>
+        {% for p in profiles %}
+        <option value="{{ p }}" {{ 'selected' if p == f_profile }}>{{ p }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div style="align-self:flex-end"><a class="btn secondary" href="/apps">clear</a></div>
+  </form>
+</div>
+
+<div class="card">
+{% if apps %}
+<table>
+  <tr><th>When</th><th>Company / role</th><th>Profile</th><th>Match</th>
+      <th>Gap (✓/~/✗)</th><th>Exp</th><th>Status</th></tr>
+  {% for a in apps %}
+  <tr>
+    <td class="muted">{{ a.created_at | timestamp }}</td>
+    <td><a href="/apps/{{ a.id }}">{{ a.company or "—" }}</a><br>
+        <span class="muted">{{ a.role or "" }}</span></td>
+    <td>{{ a.profile }}</td>
+    <td>{% if a.match_score is not none %}<b>{{ a.match_score | int }}</b>/100{% else %}<span class="muted">—</span>{% endif %}</td>
+    <td>{{ a.gap_matched }} / {{ a.gap_partial }} /
+        <span class="{{ 'warn' if a.gap_missing else '' }}">{{ a.gap_missing }}</span></td>
+    <td class="{{ 'bad' if a.years_required and a.years_available and (a.years_available + 0.5 < a.years_required) }}">
+        {% if a.years_required %}{{ a.years_available }}/{{ a.years_required }}{% else %}—{% endif %}</td>
+    <td><span class="pill s-{{ a.status }}">{{ a.status }}</span></td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p class="muted">Nothing here.</p>
+{% endif %}
+</div>
+{% endblock %}

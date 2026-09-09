@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}Settings · resume-tailor{% endblock %}
+{% block body %}
+<h1>Settings</h1>
+
+{% if err %}<div class="err">{{ err }}</div>{% endif %}
+{% if saved %}<div class="card ok" style="border-color:var(--ok)">Saved to <code>profile/settings.yaml</code>.
+  {% if banner %}<br>{{ banner }}{% endif %}</div>
+{% elif banner %}<div class="card">{{ banner }}</div>{% endif %}
+
+<form method="post" action="/settings">
+
+  <h2>AI provider</h2>
+  <div class="card">
+    <label>Active provider — used for every tailoring run</label>
+    <select name="engine">
+      {% for r in rows %}
+      <option value="{{ r.name }}" {{ 'selected' if r.name == active_engine }}>{{ r.label }}</option>
+      {% endfor %}
+    </select>
+    <p class="muted" style="margin:.5rem 0 0">
+      Keys are written to <code>profile/secrets.yaml</code> (chmod 600, git-ignored) — never to
+      <code>settings.yaml</code>. Environment variables
+      (<code>ANTHROPIC_API_KEY</code>, <code>OPENAI_API_KEY</code>, <code>GEMINI_API_KEY</code>, …)
+      override what you set here.
+    </p>
+  </div>
+
+  {% for r in rows %}
+  <fieldset class="row-item">
+    <legend>{{ r.label }}{{ ' · ACTIVE' if r.active }}</legend>
+    {% if r.help %}<p class="muted" style="margin:.1rem 0 .5rem">{{ r.help }}</p>{% endif %}
+
+    <div class="inline">
+      <div>
+        <label>Model</label>
+        <input name="model_{{ r.name }}" value="{{ r.model }}" list="models_{{ r.name }}"
+               placeholder="model id" autocomplete="off">
+        <datalist id="models_{{ r.name }}">
+          {% for m in r.models %}<option value="{{ m }}">{% endfor %}
+        </datalist>
+      </div>
+      {% if r.is_compat %}
+      <div>
+        <label>Base URL</label>
+        <input name="base_url_{{ r.name }}" value="{{ r.base_url }}"
+               placeholder="https://…/v1" autocomplete="off">
+      </div>
+      {% endif %}
+    </div>
+
+    {% if r.needs_key or r.name not in ('claude-cli',) %}
+    <div class="inline" style="margin-top:.5rem">
+      <div>
+        <label>API key
+          {% if not r.needs_key %}<span class="muted">(optional)</span>{% endif %}
+          {% if r.key_env %}<span class="muted">— or env <code>{{ r.key_env }}</code></span>{% endif %}
+        </label>
+        <input type="password" name="key_{{ r.name }}" autocomplete="off"
+               placeholder="{{ '•••••••• set — leave blank to keep' if r.has_key else 'paste key to enable' }}">
+      </div>
+      <div style="flex:0 0 auto">
+        {% if r.has_key %}
+        <label style="font-weight:400"><input type="checkbox" name="clear_key_{{ r.name }}"
+               value="1" style="width:auto"> remove key</label>
+        {% elif r.signup %}
+        <label>&nbsp;</label><a class="muted" href="{{ r.signup }}" target="_blank" rel="noopener">get a key ↗</a>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    <div style="margin-top:.5rem">
+      <button class="mini" name="do" value="test:{{ r.name }}">Save &amp; test</button>
+      {% if r.is_compat %}
+      <button class="mini secondary" name="do" value="refresh:{{ r.name }}">Refresh models</button>
+      {% endif %}
+    </div>
+  </fieldset>
+  {% endfor %}
+
+  <h2>Output</h2>
+  <div class="card">
+    <div class="row">
+      <div>
+        <label>Generate PDF</label>
+        <select name="make_pdf">
+          <option value="1" {{ 'selected' if s.make_pdf }}>Yes (DOCX + PDF)</option>
+          <option value="0" {{ 'selected' if not s.make_pdf }}>No — DOCX only (faster)</option>
+        </select>
+      </div>
+      <div>
+        <label>Page size</label>
+        <select name="page_size">
+          {% for ps in page_sizes %}
+          <option value="{{ ps }}" {{ 'selected' if ps == s.page_size }}>{{ ps }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label>Accent color</label>
+        <input type="color" name="accent_color" value="{{ s.accent_color }}" style="height:2.3rem;padding:.2rem">
+      </div>
+    </div>
+  </div>
+
+  <h2>Pipeline</h2>
+  <div class="card">
+    <label>Default self-review rounds <span class="muted">— dashboard can override per run</span></label>
+    <select name="review_rounds">
+      {% for n in [0, 1, 2, 3] %}
+      <option value="{{ n }}" {{ 'selected' if n == s.review_rounds }}>{{ n }}{{ ' (no self-review)' if n == 0 }}</option>
+      {% endfor %}
+    </select>
+
+    <details style="margin-top:1rem">
+      <summary class="muted">Match-score weights (advanced)</summary>
+      <p class="muted" style="margin:.5rem 0">Should sum to ≤ 1. Leave as-is unless you know why.</p>
+      <div class="row">
+        {% for wk in ['coverage', 'years', 'domain', 'archetype'] %}
+        <div>
+          <label>{{ wk }}</label>
+          <input type="number" name="w_{{ wk }}" step="0.05" min="0" max="1"
+                 value="{{ '%.2f'|format(weights.get(wk, 0)) }}">
+        </div>
+        {% endfor %}
+      </div>
+    </details>
+  </div>
+
+  <button name="do" value="save">Save settings</button>
+</form>
+{% endblock %}
