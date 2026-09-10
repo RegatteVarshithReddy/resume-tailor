@@ -14,9 +14,12 @@ def test_run_tailor_produces_full_output_set(home):
     paths, settings = Paths.resolve(home), Settings.load(home)
     res = run_tailor(paths=paths, settings=settings, profile="default",
                      jd_text=JOB, company="Acme", role="Senior Backend Engineer")
-    for name in ("resume.docx", "cover_letter.docx", "match.md", "coverage.md",
-                 "gap_report.md", "tailored_profile.yaml", "requirements.json"):
+    for name in ("resume.docx", "resume.txt", "resume.md", "cover_letter.docx", "defense.md",
+                 "match.md", "coverage.md", "gap_report.md", "tailored_profile.yaml",
+                 "requirements.json"):
         assert (res.out_dir / name).exists(), name
+    assert (res.out_dir / "resume.txt").read_text().strip()      # non-empty
+    assert "# Defense sheet" in (res.out_dir / "defense.md").read_text()
     assert res.match is not None and 0 <= res.match.score <= 100
     assert res.coverage is not None
 

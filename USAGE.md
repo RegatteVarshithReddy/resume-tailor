@@ -326,9 +326,9 @@ No documents written — use it to triage before spending a full run.
 
 ### `resume-tailor render <tailored_profile.yaml> [--no-pdf]`
 
-Re-render `resume.docx/pdf` and `cover_letter.docx/pdf` from an edited
-`tailored_profile.yaml`. **No AI call** — instant. This is how you iterate on
-wording by hand.
+Re-render `resume.docx/pdf`, `resume.txt/md` and `cover_letter.docx/pdf` from an
+edited `tailored_profile.yaml`. **No AI call** — instant. This is how you iterate
+on wording by hand. (`defense.md` is a first-run artifact and is left untouched.)
 
 ### `resume-tailor web [--host H] [--port P]`
 
@@ -505,9 +505,11 @@ outputs/<company>_<role>_<date>/
 ├── coverage.md / coverage.json  # per must-have: in summary/skills/bullets; hard-gate verdicts; stretch bullets
 ├── gap_report.md           # matched / partial / missing skills + years required vs available
 ├── comparison.md           # only with --variants: angles side by side + a recommendation
+├── defense.md              # every claim the master profile doesn't fully back: stretch bullets + real pivot material, gates, gaps, pre-submit checklist
 ├── tailored_profile.yaml   # structured tailored resume + cover_letter (bullets carry `source`) — EDIT, then `render`
 ├── warnings.txt            # only if the invariant-lock had to correct something
 ├── resume.docx / resume.pdf
+├── resume.txt / resume.md  # same resume as ATS-safe plain text and Markdown
 ├── cover_letter.docx / cover_letter.pdf
 ├── cover_letter.txt        # plain text, for pasting into a portal/email
 └── <angle>/                # only with --variants: a full set per angle (aggressive / conservative / ic / lead)

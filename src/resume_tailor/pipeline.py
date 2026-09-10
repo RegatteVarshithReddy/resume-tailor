@@ -41,8 +41,10 @@ from .prompts import (
     extract_prompt,
     tailor_prompt,
 )
+from .defense import build_defense
 from .render_docx import build_cover_letter_doc, build_resume_doc, save_doc
 from .render_pdf import cover_letter_to_pdf, docx_to_pdf, resume_to_pdf
+from .render_text import resume_to_markdown, resume_to_text
 from .validate import lock_invariants
 
 # angle name -> (aggressive?, archetype override or None)
@@ -215,6 +217,7 @@ def _write_set(
     warnings: list[str],
     settings: Settings,
     make_pdf: bool | None,
+    master: MasterProfile | None = None,
 ) -> tuple[dict[str, Path], str]:
     od.mkdir(parents=True, exist_ok=True)
     files: dict[str, Path] = {}
@@ -245,6 +248,14 @@ def _write_set(
     if warnings:
         (od / "warnings.txt").write_text("\n".join(warnings))
         files["warnings"] = od / "warnings.txt"
+    if master is not None:
+        (od / "defense.md").write_text(build_defense(tailored, gap, coverage, req, master))
+        files["defense"] = od / "defense.md"
+
+    (od / "resume.txt").write_text(resume_to_text(tailored))
+    files["resume_txt"] = od / "resume.txt"
+    (od / "resume.md").write_text(resume_to_markdown(tailored))
+    files["resume_md"] = od / "resume.md"
 
     accent = settings.accent_color
     resume_docx = save_doc(build_resume_doc(tailored, accent), od / "resume.docx")
@@ -308,6 +319,7 @@ def _one_angle(
     files, pdf_engine = _write_set(
         od, raw_jd=base_req.raw_text, req=req, gap=gap, tailored=tr,
         coverage=coverage, match=match, warnings=warnings, settings=settings, make_pdf=make_pdf,
+        master=master,
     )
     return tr, coverage, match, files, warnings, pdf_engine
 
@@ -450,6 +462,9 @@ def rerender(
     cover_docx = save_doc(build_cover_letter_doc(tr, tr.cover_letter, accent), od / "cover_letter.docx")
     files["resume_docx"] = resume_docx
     files["cover_letter_docx"] = cover_docx
+    (od / "resume.txt").write_text(resume_to_text(tr))
+    (od / "resume.md").write_text(resume_to_markdown(tr))
+    files["resume_txt"], files["resume_md"] = od / "resume.txt", od / "resume.md"
     pdf_engine = "none"
     want_pdf = settings.make_pdf if make_pdf is None else make_pdf
     if want_pdf:

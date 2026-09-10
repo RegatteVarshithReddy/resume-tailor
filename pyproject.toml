@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "resume-tailor"
-version = "0.3.0"
+version = "0.4.0"
 description = "Tailor an end-to-end resume + cover letter to a job requirement — CLI + web dashboard + application tracker, any AI provider, clients and work durations stay locked."
 readme = "README.md"
 requires-python = ">=3.11"

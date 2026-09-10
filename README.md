@@ -12,6 +12,9 @@ client names and start/end dates from your master profile.
 
 - **CLI + local web app** with an application tracker (every run saved, status,
   notes, match/coverage view, re-render).
+- Every run also emits a **defense sheet** — the claims your profile doesn't back,
+  each paired with the real work to pivot to in a screen — plus **plain-text and
+  Markdown** copies of the resume.
 - **Any AI provider** — Claude Code subscription, Anthropic / OpenAI / Gemini /
   OpenRouter API, or a **local model** (Ollama, LM Studio, llama.cpp, …). Pick it
   on the Settings tab.
@@ -143,7 +146,9 @@ Each run creates `outputs/<company>_<role>_<date>/`:
 | file | what |
 |---|---|
 | `resume.docx` / `resume.pdf` | tailored resume, standard layout |
+| `resume.txt` / `resume.md` | same resume as plain text (ATS paste / email body) and Markdown |
 | `cover_letter.docx` / `cover_letter.pdf` | "why I fit this requirement" write-up |
+| `defense.md` | every claim your master profile doesn't fully back — each stretch bullet paired with the real work to pivot to, plus gates / gaps / a pre-submit checklist |
 | `match.md` / `match.json` | 0–100 fit score, component breakdown, concrete "what's weak" list |
 | `coverage.md` / `coverage.json` | per must-have: is it in the summary / skills / a bullet; hard-gate verdicts; every `stretch` bullet |
 | `gap_report.md` | matched / partial / **missing** skills + required-vs-available years |

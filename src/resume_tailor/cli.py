@@ -352,8 +352,8 @@ def tailor(
         typer.echo("  variants: " + ", ".join(
             f"{v.angle} {v.match.score}/100" for v in result.variants)
             + f"  → recommended: {best.angle}")
-    for key in ("resume_docx", "resume_pdf", "cover_letter_docx", "cover_letter_pdf",
-                "match", "coverage", "comparison", "gap_report", "tailored_profile"):
+    for key in ("resume_docx", "resume_pdf", "resume_txt", "cover_letter_docx", "cover_letter_pdf",
+                "defense", "match", "coverage", "comparison", "gap_report", "tailored_profile"):
         if key in result.files:
             typer.echo(f"  - {result.files[key]}")
     if result.warnings:

@@ -73,9 +73,12 @@ _CTYPES = {
 DOWNLOADS = [
     ("resume.pdf", "Resume PDF"),
     ("resume.docx", "Resume DOCX"),
+    ("resume.txt", "Resume (plain text)"),
+    ("resume.md", "Resume (Markdown)"),
     ("cover_letter.pdf", "Cover letter PDF"),
     ("cover_letter.docx", "Cover letter DOCX"),
     ("cover_letter.txt", "Cover letter text"),
+    ("defense.md", "Defense sheet — be ready to explain"),
     ("match.md", "Match score"),
     ("coverage.md", "Coverage map"),
     ("gap_report.md", "Gap report"),
