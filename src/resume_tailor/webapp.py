@@ -184,6 +184,7 @@ class App:
             app=app, files=self._files_for(app["out_dir"]),
             gap_report=rd("gap_report.md"), cover_letter=rd("cover_letter.txt"),
             coverage_md=rd("coverage.md"), match_md=rd("match.md"),
+            defense_md=rd("defense.md"),
             comparison_md=rd("comparison.md"),
             match=self._read_json(d / "match.json"),
             coverage=self._read_json(d / "coverage.json"),

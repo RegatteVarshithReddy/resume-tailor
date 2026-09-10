@@ -1,4 +1,6 @@
 from resume_tailor.config import Paths, Settings
+from resume_tailor.pipeline import run_tailor
+from resume_tailor.store import Store
 from resume_tailor.webapp import App
 
 
@@ -53,6 +55,19 @@ def test_settings_test_button_reports_failure_gracefully(home):
         "do": ["test:custom"],
     })
     assert banner.startswith("✗ custom")
+
+
+def test_app_detail_page_shows_defense_sheet(home):
+    paths, settings = Paths.resolve(home), Settings.load(home)
+    res = run_tailor(paths=paths, settings=settings, profile="default",
+                     jd_text="Senior Backend Engineer\nMust have: 8+ years, Go, Kafka, Kubernetes.\n",
+                     company="Acme", role="Senior Backend Engineer")
+    aid = Store(paths.db).create_application(profile="default", company="Acme",
+                                            role="Senior Backend Engineer", out_dir=str(res.out_dir))
+    html = App(paths, settings).page_app(aid)
+    assert b"Defense sheet" in html
+    assert b"Before you submit" in html          # section from defense.md rendered inline
+    assert b'href="/file?path=' in html and b"defense.md" in html   # also a download link
 
 
 def test_settings_test_button_ok_with_mock(home):

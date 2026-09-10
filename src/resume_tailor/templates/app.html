@@ -46,6 +46,13 @@
 </div>
 {% endif %}
 
+{% if defense_md %}
+<div class="card" style="border-color:var(--warn)">
+  <h2 style="margin-top:0">Defense sheet <span class="muted">— resolve before you submit</span></h2>
+  <pre>{{ defense_md }}</pre>
+</div>
+{% endif %}
+
 {% if variants %}
 <div class="card">
   <h2 style="margin-top:0">Variants</h2>
