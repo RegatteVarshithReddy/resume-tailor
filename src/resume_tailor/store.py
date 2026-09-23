@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     created_at  REAL NOT NULL,
     updated_at  REAL NOT NULL,
     state       TEXT NOT NULL DEFAULT 'queued',
-    kind        TEXT NOT NULL,          -- tailor | rerender
+    kind        TEXT NOT NULL,          -- tailor | rerender | prep
     params_json TEXT NOT NULL,
     app_id      TEXT,
     log         TEXT DEFAULT '',

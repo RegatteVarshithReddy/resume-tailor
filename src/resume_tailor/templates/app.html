@@ -53,6 +53,26 @@
 </div>
 {% endif %}
 
+{% set prep_due = app.status in ('screening', 'interview') %}
+<div class="card"{% if prep_due and not prep_md %} style="border-color:var(--warn)"{% endif %}>
+  <h2 style="margin-top:0">Interview prep
+    <span class="muted">— {% if prep_md %}what they will ask, and what you will say{%
+      else %}generated on demand, 1 AI call{% endif %}</span></h2>
+  {% if prep_md %}
+    <pre>{{ prep_md }}</pre>
+    <form method="post" action="/apps/{{ app.id }}/prep">
+      <button class="mini secondary" type="submit">Regenerate</button>
+    </form>
+  {% else %}
+    <p style="margin-top:0">{% if prep_due %}This one is at <b>{{ app.status }}</b> — build the
+      prep pack now.{% else %}Likely questions per must-have, STAR stories from your real
+      material, and every stretch claim paired with the work to pivot to.{% endif %}</p>
+    <form method="post" action="/apps/{{ app.id }}/prep">
+      <button type="submit">Generate interview prep</button>
+    </form>
+  {% endif %}
+</div>
+
 {% if variants %}
 <div class="card">
   <h2 style="margin-top:0">Variants</h2>

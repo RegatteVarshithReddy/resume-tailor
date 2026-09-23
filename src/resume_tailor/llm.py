@@ -282,6 +282,8 @@ class MockEngine(Engine):
 
     def complete(self, system: str, prompt: str) -> str:
         s = (system or "").lower()
+        if "interview" in s:                      # must precede the tailor fallback
+            return json.dumps(self._prep(prompt))
         if "recruiter" in s or "extract the requirements" in prompt.lower():
             return json.dumps(self._extract(prompt))
         return json.dumps(self._tailor(prompt))
@@ -310,6 +312,53 @@ class MockEngine(Engine):
             "must_have_skills": skills, "nice_to_have_skills": [], "ats_keywords": skills,
             "hard_gates": [f"{ym.group(1)}+ years"] if ym else [],
             "archetype": "ic", "domains": [], "responsibilities": [],
+        }
+
+    @staticmethod
+    def _prep(prompt: str) -> dict:
+        """Canned interview pack, built off the payload embedded in the prompt."""
+        import re
+
+        m = re.search(r"=== RUN FACTS ===\n(\{.*?\})\n\n=== RULES ===", prompt, re.S)
+        try:
+            p = json.loads(m.group(1)) if m else {}
+        except json.JSONDecodeError:
+            p = {}
+
+        technical = [{
+            "skill": mh["skill"], "weight": mh.get("weight", 2), "risk": mh.get("risk", "thin"),
+            "questions": [f"How have you used {mh['skill']} in production?",
+                          f"What went wrong with {mh['skill']}, and how did you fix it?"],
+            "your_material": f"Resume placement: {mh.get('where_on_resume', '—')}.",
+            "pivot": (f"Keep {mh['skill']} at the level the bullet states."
+                      if mh.get("risk") == "stretch" else ""),
+        } for mh in (p.get("must_haves") or [])]
+
+        stories = [{
+            "exp_id": e["exp_id"],
+            "headline": f"{e.get('client') or e['exp_id']} delivery",
+            "situation": f"Engagement at {e.get('client') or e['exp_id']}.",
+            "task": "Owned the delivery of the work described on the resume.",
+            "action": (e.get("master_bullets") or e.get("bullet_library")
+                       or ["Delivered the engagement."])[0],
+            "result": "Shipped on the agreed timeline.",
+            "maps_to": (e.get("environment") or [])[:4],
+        } for e in (p.get("experience") or []) if e.get("master_bullets") or e.get("bullet_library")]
+
+        landmines = [{
+            "claim": s["text"],
+            "if_pressed": "State the scope honestly and do not add depth.",
+            "pivot_to": (s.get("real_material") or ["the real work on that engagement"])[0],
+        } for s in (p.get("stretch") or [])]
+
+        return {
+            "technical": technical,
+            "stories": stories,
+            "behavioral": [{"question": "Tell me about a project that slipped.",
+                            "angle": "ownership over blame"}],
+            "ask_them": ["What does the first 90 days look like?",
+                         "What is the hardest part of this seat today?"],
+            "landmines": landmines,
         }
 
     @staticmethod

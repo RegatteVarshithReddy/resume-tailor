@@ -32,7 +32,7 @@ from .models import (
     MatchScore,
     TailoredResume,
 )
-from .profile_io import dump_tailored, load_master
+from .profile_io import dump_tailored, load_master, load_tailored
 from .prompts import (
     CRITIQUE_SYSTEM,
     EXTRACT_SYSTEM,
@@ -41,7 +41,9 @@ from .prompts import (
     extract_prompt,
     tailor_prompt,
 )
+from .prompts import PREP_SYSTEM, prep_prompt
 from .defense import build_defense
+from .interview import build_prep_fallback, prep_payload, render_prep
 from .render_docx import build_cover_letter_doc, build_resume_doc, save_doc
 from .render_pdf import cover_letter_to_pdf, docx_to_pdf, resume_to_pdf
 from .render_text import resume_to_markdown, resume_to_text
@@ -449,11 +451,107 @@ def run_tailor(
     )
 
 
+# --------------------------------------------------------------------------- #
+# Interview prep — on demand, against an already-tailored run
+# --------------------------------------------------------------------------- #
+@dataclass
+class PrepResult:
+    out_dir: Path
+    files: dict[str, Path] = field(default_factory=dict)
+    used_llm: bool = False
+    areas: int = 0
+    stories: int = 0
+    landmines: int = 0
+
+
+def load_run_context(paths: Paths, out_dir: str | Path, profile: str):
+    """Rebuild everything the prep pack needs from a finished run directory.
+
+    Coverage and the gap report are recomputed (not read back from the JSON
+    summaries, which are lossy) so the risk classification is exact.
+    """
+    od = Path(out_dir).expanduser()
+    ty, rj = od / "tailored_profile.yaml", od / "requirements.json"
+    if not ty.exists():
+        raise FileNotFoundError(
+            f"{ty} not found — interview prep needs a full `tailor` run directory."
+        )
+    if not rj.exists():
+        raise FileNotFoundError(
+            f"{rj} not found — interview prep needs a full `tailor` run directory."
+        )
+    tr = load_tailored(ty)
+    try:
+        req = JobRequirement.from_dict(json.loads(rj.read_text()))
+    except json.JSONDecodeError as e:
+        raise ValueError(f"{rj} is not valid JSON: {e}") from e
+    master = load_master(paths, profile)
+    coverage = check_coverage(tr, req)
+    gap = build_gap_report(master, req)
+    return od, tr, req, master, coverage, gap
+
+
+def run_prep(
+    *,
+    paths: Paths,
+    settings: Settings,
+    out_dir: str | Path,
+    profile: str = DEFAULT_PROFILE,
+    engine_name: str | None = None,
+    model: str | None = None,
+    use_llm: bool = True,
+    progress=None,
+) -> PrepResult:
+    def _say(msg: str) -> None:
+        if progress:
+            progress(msg)
+
+    od, tr, req, master, coverage, gap = load_run_context(paths, out_dir, profile)
+    payload = prep_payload(tr, master, req, coverage, gap)
+    _say(f"profile '{profile}' · {len(payload['must_haves'])} must-have(s) · "
+         f"{len(payload['stretch'])} stretch bullet(s)")
+
+    data: dict | None = None
+    used_llm = False
+    if use_llm:
+        engine = get_engine(settings, engine_name, model=model)
+        _say(f"engine: {engine.name} · model: {getattr(engine, 'model', None) or 'engine default'}")
+        _say("building the interview prep pack (1 AI call)")
+        try:
+            got = engine.complete_json(PREP_SYSTEM, prep_prompt(payload))
+            if isinstance(got, dict) and got.get("technical"):
+                data, used_llm = got, True
+            else:
+                _say("model returned an unusable shape — using the deterministic pack")
+        except Exception as e:  # noqa: BLE001
+            _say(f"AI call failed ({type(e).__name__}: {e}) — using the deterministic pack")
+    else:
+        _say("--no-llm: deterministic pack only")
+
+    if data is None:
+        data = build_prep_fallback(payload)
+
+    md = render_prep(data, payload)
+    files = {"interview_prep": od / "interview_prep.md"}
+    (od / "interview_prep.md").write_text(md)
+    (od / "interview_prep.json").write_text(json.dumps(
+        {"used_llm": used_llm, "generated": datetime.now().isoformat(timespec="seconds"),
+         "target": payload["target"], "data": data},
+        indent=2, default=str,
+    ))
+    files["interview_prep_json"] = od / "interview_prep.json"
+    _say("done" + ("" if used_llm else " (deterministic)"))
+    return PrepResult(
+        out_dir=od, files=files, used_llm=used_llm,
+        areas=len(data.get("technical") or []),
+        stories=len(data.get("stories") or []),
+        landmines=len(data.get("landmines") or []),
+    )
+
+
 def rerender(
     *, paths: Paths, settings: Settings, tailored_yaml: str, make_pdf: bool | None = None
 ) -> TailorResult:
-    from .profile_io import load_tailored
-
     tr = load_tailored(Path(tailored_yaml).expanduser())
     od = Path(tailored_yaml).expanduser().parent
     accent = settings.accent_color

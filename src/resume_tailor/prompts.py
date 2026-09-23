@@ -247,6 +247,80 @@ def critique_prompt(
     )
 
 
+# --------------------------------------------------------------------------- #
+# Call 4 (on demand) — the interview prep pack for an already-tailored run
+# --------------------------------------------------------------------------- #
+# NOTE: the word "interview" in this string is what MockEngine routes on — keep it,
+# and keep the word "recruiter" OUT (that routes to the extract branch).
+PREP_SYSTEM = (
+    "You are an interview coach for IT contract consultants. You are given a tailored "
+    "resume, the job requirement it targets, and an honest map of which claims the "
+    "candidate's real profile does and does not back. You return STRICT JSON only — no "
+    "commentary, no markdown fences. Escape every newline inside a string as \\n."
+)
+
+
+def prep_prompt(payload: dict, *, max_questions: int = 3) -> str:
+    out_schema = {
+        "technical": [
+            {
+                "skill": "must-have name, copied from must_haves",
+                "weight": "copied from must_haves",
+                "risk": "copied from must_haves (stretch|thin|solid)",
+                "questions": [f"{max_questions} or fewer questions an interviewer would "
+                              "actually ask about this skill, increasing in depth"],
+                "your_material": "one or two sentences: the concrete thing from THIS "
+                                 "candidate's experience that answers those questions",
+                "pivot": "only for risk=stretch: what to say when pressed past what they "
+                         "have really done, and the real work to steer to. '' otherwise",
+            }
+        ],
+        "stories": [
+            {
+                "exp_id": "MUST equal an experience exp_id from the payload",
+                "headline": "short name for the story, e.g. 'Cutting the nightly batch window'",
+                "situation": "1-2 sentences of context",
+                "task": "what this candidate specifically owned",
+                "action": "what they did — concrete, technical, first-person-implied, no 'I'",
+                "result": "the outcome, with the real number if the material has one",
+                "maps_to": ["which must-have skills this story evidences"],
+            }
+        ],
+        "behavioral": [{"question": "a behavioural question fitting the archetype",
+                        "angle": "one line on what the interviewer is really testing"}],
+        "ask_them": ["questions the candidate should ask, specific to THIS job, not generic"],
+        "landmines": [
+            {
+                "claim": "the stretch bullet, copied verbatim from payload.stretch",
+                "if_pressed": "how to answer honestly without collapsing the claim",
+                "pivot_to": "the real work from that same engagement to steer to",
+            }
+        ],
+    }
+    return (
+        "Build an interview prep pack from this run.\n\n"
+        "=== RUN FACTS ===\n"
+        f"{json.dumps(payload, indent=2, default=str)}\n\n"
+        "=== RULES ===\n"
+        "- Ground EVERY answer in the payload. Do not invent employers, projects, numbers, "
+        "certifications or tools that are not in master_bullets / bullet_library / "
+        "environment for that engagement.\n"
+        "- Cover every must-have in `technical`, weight-3 first, in the payload's order.\n"
+        "- risk='stretch' means the resume claims more than the profile backs: the questions "
+        "must be the uncomfortable ones, and `pivot` is mandatory and specific.\n"
+        "- risk='solid' needs no pivot — leave it ''.\n"
+        "- One story per experience entry that has real material, using its exp_id.\n"
+        "- `result`: use a real number from the material if there is one; never fabricate a "
+        "metric. If there is no number, describe the outcome qualitatively.\n"
+        "- One landmine per entry in payload.stretch, claim copied verbatim.\n"
+        "- `ask_them`: 4-6 questions that could only be asked of THIS role — use the "
+        "domains and responsibilities.\n"
+        "- Plain text in every field: no markdown, no bullet characters.\n\n"
+        "=== RETURN JSON WITH EXACTLY THIS SHAPE ===\n"
+        f"{json.dumps(out_schema, indent=2)}"
+    )
+
+
 def _master_payload(m: MasterProfile) -> dict:
     return {
         "contact": {"name": m.contact.name, "title": m.contact.title},

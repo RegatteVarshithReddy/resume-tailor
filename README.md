@@ -15,6 +15,9 @@ client names and start/end dates from your master profile.
 - Every run also emits a **defense sheet** — the claims your profile doesn't back,
   each paired with the real work to pivot to in a screen — plus **plain-text and
   Markdown** copies of the resume.
+- When one reaches a screen, one command builds the **interview prep pack**: the
+  questions they will ask, STAR stories from your real material, and every stretch
+  claim paired with a pivot.
 - **Any AI provider** — Claude Code subscription, Anthropic / OpenAI / Gemini /
   OpenRouter API, or a **local model** (Ollama, LM Studio, llama.cpp, …). Pick it
   on the Settings tab.
@@ -76,6 +79,7 @@ resume-tailor tailor --jd job.txt --company "Acme" --role "Senior Java Engineer"
 pbpaste | resume-tailor tailor                 # JD on stdin
 resume-tailor tailor --jd job.txt --engine openai --model gpt-4o
 resume-tailor gap --jd job.txt                 # gap report only, no documents
+resume-tailor prep                             # interview prep for the last run
 resume-tailor web                              # dashboard + tracker
 resume-tailor engines / models / profiles      # what's configured
 ```
@@ -110,6 +114,27 @@ layout** (which sections, order, headings, per-section `max` items, plus `custom
 print verbatim). On the dashboard, **Auto** (the default) reads the JD's `min_years` + role and
 picks the profile that fits — a 5-year JD lands on your 6-year profile, a 7-year JD on your
 senior one. A profile left on the default five sections behaves exactly as before.
+
+### Interview prep
+
+When an application actually reaches a screen, build the prep pack for it — **one
+AI call, on demand**, so run time stays where it is and you only spend it on the
+jobs that got a reply:
+
+```bash
+resume-tailor prep                  # the most recent run
+resume-tailor prep app_2d56f497c6   # or a specific one
+resume-tailor prep --no-llm         # deterministic scaffold, no AI call
+```
+
+`interview_prep.md` gives you likely **technical questions** per must-have (weight-3
+first, each tagged ⚠️ stretch / ◐ thin / ✓ solid against what your profile really
+backs), **STAR stories** assembled from your master material, **behavioural**
+questions pitched at the JD's archetype, **screening logistics** (open gates, years
+shortfall, work authorization, rate), **questions to ask them**, and **landmines** —
+every stretch claim paired with the real work to pivot to. In the web UI it's the
+**Generate interview prep** button on a run's page, which highlights itself once
+the application moves to `screening` or `interview`.
 
 ### Application tracker
 
@@ -149,6 +174,7 @@ Each run creates `outputs/<company>_<role>_<date>/`:
 | `resume.txt` / `resume.md` | same resume as plain text (ATS paste / email body) and Markdown |
 | `cover_letter.docx` / `cover_letter.pdf` | "why I fit this requirement" write-up |
 | `defense.md` | every claim your master profile doesn't fully back — each stretch bullet paired with the real work to pivot to, plus gates / gaps / a pre-submit checklist |
+| `interview_prep.md` | only after `resume-tailor prep` — likely questions per must-have, STAR stories, behavioural, screening logistics, landmines |
 | `match.md` / `match.json` | 0–100 fit score, component breakdown, concrete "what's weak" list |
 | `coverage.md` / `coverage.json` | per must-have: is it in the summary / skills / a bullet; hard-gate verdicts; every `stretch` bullet |
 | `gap_report.md` | matched / partial / **missing** skills + required-vs-available years |

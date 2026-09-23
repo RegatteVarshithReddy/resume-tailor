@@ -28,7 +28,7 @@ from .config import (
     save_ui_state,
 )
 from .pipeline import VARIANT_ANGLES
-from .jobs import submit_rerender, submit_tailor
+from .jobs import submit_prep, submit_rerender, submit_tailor
 from .models import CORE_SECTIONS, MasterProfile, SectionSpec
 from .profile_io import (
     ProfileError,
@@ -79,6 +79,7 @@ DOWNLOADS = [
     ("cover_letter.docx", "Cover letter DOCX"),
     ("cover_letter.txt", "Cover letter text"),
     ("defense.md", "Defense sheet — be ready to explain"),
+    ("interview_prep.md", "Interview prep pack"),
     ("match.md", "Match score"),
     ("coverage.md", "Coverage map"),
     ("gap_report.md", "Gap report"),
@@ -185,6 +186,7 @@ class App:
             gap_report=rd("gap_report.md"), cover_letter=rd("cover_letter.txt"),
             coverage_md=rd("coverage.md"), match_md=rd("match.md"),
             defense_md=rd("defense.md"),
+            prep_md=rd("interview_prep.md"),
             comparison_md=rd("comparison.md"),
             match=self._read_json(d / "match.json"),
             coverage=self._read_json(d / "coverage.json"),
@@ -401,6 +403,13 @@ class App:
     def act_rerender(self, aid: str) -> str:
         return submit_rerender(self.store, self.paths, self.settings, aid)
 
+    def act_prep(self, aid: str, form: dict | None = None) -> str:
+        if not self.store.get_application(aid):
+            raise ValueError(f"application {aid} not found")
+        model = ((form or {}).get("model") or [""])[0].strip().lower()
+        return submit_prep(self.store, self.paths, self.settings, aid,
+                           model=model if model in MODEL_CHOICES else None)
+
     def act_promote(self, aid: str, form: dict) -> None:
         import shutil
 
@@ -567,6 +576,10 @@ def make_handler(app: App):
                 m = re.fullmatch(r"/apps/([A-Za-z0-9_]+)/rerender", path)
                 if m:
                     jid = app.act_rerender(m.group(1))
+                    return self._redirect(f"/jobs/{jid}")
+                m = re.fullmatch(r"/apps/([A-Za-z0-9_]+)/prep", path)
+                if m:
+                    jid = app.act_prep(m.group(1), self._form())
                     return self._redirect(f"/jobs/{jid}")
                 m = re.fullmatch(r"/apps/([A-Za-z0-9_]+)/promote", path)
                 if m:

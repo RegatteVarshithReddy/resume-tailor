@@ -390,6 +390,63 @@ def render(
 
 
 @app.command()
+def prep(
+    target: Optional[str] = typer.Argument(
+        None, help="Application id (app_…) or a run output directory. "
+        "Default: the most recent tracked run."),
+    profile: Optional[str] = typer.Option(
+        None, "--profile", "-p", help="Master profile to build against "
+        "(default: the one the run used)."),
+    engine: Optional[str] = typer.Option(None, "--engine", help="See `resume-tailor engines`."),
+    model: Optional[str] = typer.Option(None, "--model", help="opus | sonnet | haiku (or a full id)."),
+    no_llm: bool = typer.Option(False, "--no-llm", help="Deterministic scaffold only, no AI call."),
+) -> None:
+    """Build the interview prep pack for a finished run — likely questions, STAR
+    stories from your real material, and every stretch claim paired with a pivot."""
+    from .pipeline import run_prep
+    from .store import Store
+
+    paths = Paths.resolve()
+    settings = Settings.load()
+    store = Store(paths.db)
+
+    out_dir, run_profile = None, profile or DEFAULT_PROFILE
+    if target and Path(target).expanduser().is_dir():
+        out_dir = str(Path(target).expanduser())
+    elif target:
+        a = store.get_application(target)
+        if not a:
+            _err(f"no such application or directory: {target}")
+            return
+        out_dir, run_profile = a["out_dir"], (profile or a["profile"])
+    else:
+        rows = store.list_applications(limit=1)
+        if not rows:
+            _err("No tracked runs yet — pass a run directory, or run `tailor` first.")
+            return
+        out_dir, run_profile = rows[0]["out_dir"], (profile or rows[0]["profile"])
+        typer.secho(f"  · most recent run: {rows[0]['company'] or '—'} "
+                    f"({rows[0]['id']})", fg=typer.colors.BRIGHT_BLACK)
+
+    try:
+        result = run_prep(
+            paths=paths, settings=settings, out_dir=out_dir, profile=run_profile,
+            engine_name=engine, model=model, use_llm=not no_llm,
+            progress=lambda m: typer.secho(f"  · {m}", fg=typer.colors.BRIGHT_BLACK),
+        )
+    except Exception as e:  # noqa: BLE001
+        _err(f"{type(e).__name__}: {e}")
+        return
+
+    typer.secho(f"\n✔ {result.files['interview_prep']}", fg=typer.colors.GREEN, bold=True)
+    typer.echo(f"  {result.areas} technical area(s) · {result.stories} STAR story(ies) · "
+               f"{result.landmines} landmine(s)")
+    if not result.used_llm:
+        typer.secho("  deterministic pack (no AI call) — the answers are scaffolding to fill in",
+                    fg=typer.colors.YELLOW)
+
+
+@app.command()
 def web(
     host: str = typer.Option("127.0.0.1", "--host"),
     port: int = typer.Option(8000, "--port"),

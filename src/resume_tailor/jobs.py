@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from .config import Paths, Settings
-from .pipeline import rerender, run_tailor
+from .pipeline import rerender, run_prep, run_tailor
 from .store import Store
 
 _pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="rt-job")
@@ -27,6 +27,13 @@ def submit_tailor(store: Store, paths: Paths, settings: Settings, params: dict) 
 def submit_rerender(store: Store, paths: Paths, settings: Settings, app_id: str) -> str:
     jid = store.create_job("rerender", {"app_id": app_id})
     _pool.submit(_run_rerender_job, jid, store, paths, settings, app_id)
+    return jid
+
+
+def submit_prep(store: Store, paths: Paths, settings: Settings, app_id: str,
+                model: str | None = None) -> str:
+    jid = store.create_job("prep", {"app_id": app_id, "model": model})
+    _pool.submit(_run_prep_job, jid, store, paths, settings, app_id, model)
     return jid
 
 
@@ -72,6 +79,26 @@ def _run_tailor_job(jid, store: Store, paths: Paths, settings: Settings, params:
     except Exception as e:  # noqa: BLE001
         store.update_job(jid, state="error", error=f"{type(e).__name__}: {e}\n{traceback.format_exc()}")
         log(f"ERROR: {e}")
+
+
+def _run_prep_job(jid, store: Store, paths: Paths, settings: Settings, app_id: str,
+                  model: str | None = None) -> None:
+    store.update_job(jid, state="running", app_id=app_id)
+    log = lambda m: store.append_job_log(jid, m)  # noqa: E731
+    try:
+        app = store.get_application(app_id)
+        if not app:
+            raise RuntimeError(f"application {app_id} not found")
+        result = run_prep(
+            paths=paths, settings=settings, out_dir=app["out_dir"],
+            profile=app["profile"], model=model or None, progress=log,
+        )
+        store.update_job(jid, state="done")
+        log(f"interview_prep.md written — {result.areas} area(s), {result.stories} story(ies), "
+            f"{result.landmines} landmine(s)")
+    except Exception as e:  # noqa: BLE001
+        store.update_job(jid, state="error", error=f"{type(e).__name__}: {e}")
+        store.append_job_log(jid, f"ERROR: {e}")
 
 
 def _run_rerender_job(jid, store: Store, paths: Paths, settings: Settings, app_id: str) -> None:

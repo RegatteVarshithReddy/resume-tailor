@@ -330,6 +330,36 @@ Re-render `resume.docx/pdf`, `resume.txt/md` and `cover_letter.docx/pdf` from an
 edited `tailored_profile.yaml`. **No AI call** — instant. This is how you iterate
 on wording by hand. (`defense.md` is a first-run artifact and is left untouched.)
 
+### `resume-tailor prep [APP_ID | DIR]`
+
+Build `interview_prep.md` for a finished run — **one AI call, on demand**, so you
+only spend it on the jobs that actually reach a screen. With no argument it takes
+the most recent tracked run; otherwise pass an application id (`app_…`) or a run
+output directory.
+
+```bash
+resume-tailor prep                      # the most recent run
+resume-tailor prep app_2d56f497c6       # a specific tracked application
+resume-tailor prep outputs/acme_senior-java-engineer_2026-09-08
+resume-tailor prep --model opus         # override the model for this one call
+resume-tailor prep --no-llm             # deterministic scaffold, no AI call
+```
+
+Options: `--profile/-p` (default: the profile that run used), `--engine`,
+`--model`, `--no-llm`.
+
+The pack has six sections: likely **technical questions** per must-have (weight-3
+first, each tagged ⚠️ stretch / ◐ thin / ✓ solid against your real profile), **STAR
+stories** built from your master material, **behavioural** questions pitched at the
+JD's archetype, **screening logistics** (open hard gates, years shortfall, work
+authorization, rate), **questions to ask them**, and **landmines** — every stretch
+claim paired with the real work to pivot to.
+
+`--no-llm` and any provider failure fall back to a deterministic pack: the
+questions are real, the answers are scaffolding you fill in. In the web UI the
+same thing is the **Generate interview prep** button on a run's page, which
+highlights itself once you move the application to `screening` or `interview`.
+
 ### `resume-tailor web [--host H] [--port P]`
 
 Start the local web UI (default `http://127.0.0.1:8000`). Paste a JD, pick
@@ -506,6 +536,8 @@ outputs/<company>_<role>_<date>/
 ├── gap_report.md           # matched / partial / missing skills + years required vs available
 ├── comparison.md           # only with --variants: angles side by side + a recommendation
 ├── defense.md              # every claim the master profile doesn't fully back: stretch bullets + real pivot material, gates, gaps, pre-submit checklist
+├── interview_prep.md       # only after `resume-tailor prep`: likely questions per must-have, STAR stories, behavioural, logistics, landmines
+├── interview_prep.json     # the same pack as data, plus whether an AI call produced it
 ├── tailored_profile.yaml   # structured tailored resume + cover_letter (bullets carry `source`) — EDIT, then `render`
 ├── warnings.txt            # only if the invariant-lock had to correct something
 ├── resume.docx / resume.pdf
