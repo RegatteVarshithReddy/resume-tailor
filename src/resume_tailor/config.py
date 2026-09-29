@@ -130,6 +130,7 @@ class Settings:
     make_pdf: bool = True
     page_size: str = "letter"           # letter | a4
     accent_color: str = "#1F4E79"
+    resume_template: str = "standard"   # standard | compact | detailed (see render_docx.RESUME_TEMPLATES)
     review_rounds: int = 2              # draft -> critique/revise this many times (0 disables)
     match_weights: dict = field(default_factory=lambda: dict(DEFAULT_MATCH_WEIGHTS))
 

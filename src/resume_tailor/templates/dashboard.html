@@ -47,6 +47,14 @@
       </select>
     </div>
     <div>
+      <label>Template</label>
+      <select name="template">
+        {% for key, label in template_choices %}
+        <option value="{{ key }}" title="{{ label }}" {{ 'selected' if key == template_current }}>{{ key }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
       <label>Max bullets / role</label>
       <input type="number" name="bullets" value="{{ default_bullets }}" min="3" max="10">
     </div>

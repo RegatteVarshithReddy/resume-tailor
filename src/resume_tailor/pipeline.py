@@ -44,7 +44,7 @@ from .prompts import (
 from .prompts import PREP_SYSTEM, prep_prompt
 from .defense import build_defense
 from .interview import build_prep_fallback, prep_payload, render_prep
-from .render_docx import build_cover_letter_doc, build_resume_doc, save_doc
+from .render_docx import DEFAULT_TEMPLATE, build_cover_letter_doc, build_resume_doc, save_doc
 from .render_pdf import cover_letter_to_pdf, docx_to_pdf, resume_to_pdf
 from .render_text import resume_to_markdown, resume_to_text
 from .validate import lock_invariants
@@ -81,6 +81,7 @@ class TailorResult:
     coverage: CoverageReport | None = None
     match: MatchScore | None = None
     variants: list[VariantResult] = field(default_factory=list)
+    template: str = DEFAULT_TEMPLATE
 
 
 def _slug(s: str, fallback: str) -> str:
@@ -220,6 +221,7 @@ def _write_set(
     settings: Settings,
     make_pdf: bool | None,
     master: MasterProfile | None = None,
+    template: str | None = None,
 ) -> tuple[dict[str, Path], str]:
     od.mkdir(parents=True, exist_ok=True)
     files: dict[str, Path] = {}
@@ -260,10 +262,11 @@ def _write_set(
     files["resume_md"] = od / "resume.md"
 
     accent = settings.accent_color
-    resume_docx = save_doc(build_resume_doc(tailored, accent), od / "resume.docx")
+    tmpl = template or settings.resume_template or DEFAULT_TEMPLATE
+    resume_docx = save_doc(build_resume_doc(tailored, accent, tmpl), od / "resume.docx")
     files["resume_docx"] = resume_docx
     cl_body = tailored.cover_letter or ""
-    cover_docx = save_doc(build_cover_letter_doc(tailored, cl_body, accent), od / "cover_letter.docx")
+    cover_docx = save_doc(build_cover_letter_doc(tailored, cl_body, accent, tmpl), od / "cover_letter.docx")
     files["cover_letter_docx"] = cover_docx
     (od / "cover_letter.txt").write_text(cl_body)
     files["cover_letter_txt"] = od / "cover_letter.txt"
@@ -278,9 +281,9 @@ def _write_set(
             files["resume_pdf"], files["cover_letter_pdf"] = r_pdf, c_pdf
         else:
             pdf_engine = "fpdf2"
-            files["resume_pdf"] = resume_to_pdf(tailored, od / "resume.pdf", settings.page_size)
+            files["resume_pdf"] = resume_to_pdf(tailored, od / "resume.pdf", settings.page_size, tmpl)
             files["cover_letter_pdf"] = cover_letter_to_pdf(
-                tailored, cl_body, od / "cover_letter.pdf", settings.page_size
+                tailored, cl_body, od / "cover_letter.pdf", settings.page_size, tmpl
             )
     return files, pdf_engine
 
@@ -299,6 +302,7 @@ def _one_angle(
     settings: Settings,
     make_pdf: bool | None,
     say,
+    template: str | None = None,
 ) -> tuple[TailoredResume, CoverageReport, MatchScore, dict[str, Path], list[str], str]:
     agg, arch_override = VARIANT_ANGLES.get(angle, (aggressive, None))
     req = base_req
@@ -321,7 +325,7 @@ def _one_angle(
     files, pdf_engine = _write_set(
         od, raw_jd=base_req.raw_text, req=req, gap=gap, tailored=tr,
         coverage=coverage, match=match, warnings=warnings, settings=settings, make_pdf=make_pdf,
-        master=master,
+        master=master, template=template,
     )
     return tr, coverage, match, files, warnings, pdf_engine
 
@@ -364,6 +368,7 @@ def run_tailor(
     out_dir: str | None = None,
     review_rounds: int | None = None,
     variants: list[str] | None = None,
+    template: str | None = None,
     progress=None,
 ) -> TailorResult:
     def _say(msg: str) -> None:
@@ -372,6 +377,7 @@ def run_tailor(
 
     rounds = settings.review_rounds if review_rounds is None else max(0, int(review_rounds))
     angles = [a for a in (variants or []) if a in VARIANT_ANGLES]
+    tmpl = (template or "").strip().lower() or settings.resume_template or DEFAULT_TEMPLATE
 
     raw_jd = read_jd(jd_file, jd_text)
     engine = get_engine(settings, engine_name, model=model)
@@ -408,14 +414,14 @@ def run_tailor(
             engine, master, req, gap,
             angle=("aggressive" if aggressive else "conservative"),
             aggressive=aggressive, max_bullets=max_bullets, review_rounds=rounds,
-            od=od, settings=settings, make_pdf=make_pdf, say=_say,
+            od=od, settings=settings, make_pdf=make_pdf, say=_say, template=tmpl,
         )
         _say("done")
         return TailorResult(
             out_dir=od, req=req, gap=gap, tailored=tr, warnings=warnings, files=files,
             pdf_engine=pdf_engine, profile=chosen,
             mode="aggressive" if aggressive else "conservative", route_reason=reason,
-            coverage=coverage, match=match,
+            coverage=coverage, match=match, template=tmpl,
         )
 
     variant_results: list[VariantResult] = []
@@ -425,7 +431,7 @@ def run_tailor(
         got = _one_angle(
             engine, master, req, gap, angle=angle,
             aggressive=aggressive, max_bullets=max_bullets, review_rounds=rounds,
-            od=vod, settings=settings, make_pdf=make_pdf, say=_say,
+            od=vod, settings=settings, make_pdf=make_pdf, say=_say, template=tmpl,
         )
         by_angle[angle] = got
         variant_results.append(VariantResult(angle=angle, out_dir=vod, match=got[2], coverage=got[1]))
@@ -447,7 +453,7 @@ def run_tailor(
     return TailorResult(
         out_dir=od, req=req, gap=gap, tailored=tr, warnings=warnings, files=files,
         pdf_engine=pdf_engine, profile=chosen, mode="variants", route_reason=reason,
-        coverage=coverage, match=match, variants=variant_results,
+        coverage=coverage, match=match, variants=variant_results, template=tmpl,
     )
 
 
@@ -550,14 +556,16 @@ def run_prep(
 
 
 def rerender(
-    *, paths: Paths, settings: Settings, tailored_yaml: str, make_pdf: bool | None = None
+    *, paths: Paths, settings: Settings, tailored_yaml: str, make_pdf: bool | None = None,
+    template: str | None = None,
 ) -> TailorResult:
     tr = load_tailored(Path(tailored_yaml).expanduser())
     od = Path(tailored_yaml).expanduser().parent
     accent = settings.accent_color
+    tmpl = (template or "").strip().lower() or settings.resume_template or DEFAULT_TEMPLATE
     files: dict[str, Path] = {}
-    resume_docx = save_doc(build_resume_doc(tr, accent), od / "resume.docx")
-    cover_docx = save_doc(build_cover_letter_doc(tr, tr.cover_letter, accent), od / "cover_letter.docx")
+    resume_docx = save_doc(build_resume_doc(tr, accent, tmpl), od / "resume.docx")
+    cover_docx = save_doc(build_cover_letter_doc(tr, tr.cover_letter, accent, tmpl), od / "cover_letter.docx")
     files["resume_docx"] = resume_docx
     files["cover_letter_docx"] = cover_docx
     (od / "resume.txt").write_text(resume_to_text(tr))
@@ -573,11 +581,11 @@ def rerender(
             files["resume_pdf"], files["cover_letter_pdf"] = r_pdf, c_pdf
         else:
             pdf_engine = "fpdf2"
-            files["resume_pdf"] = resume_to_pdf(tr, od / "resume.pdf", settings.page_size)
+            files["resume_pdf"] = resume_to_pdf(tr, od / "resume.pdf", settings.page_size, tmpl)
             files["cover_letter_pdf"] = cover_letter_to_pdf(
-                tr, tr.cover_letter, od / "cover_letter.pdf", settings.page_size
+                tr, tr.cover_letter, od / "cover_letter.pdf", settings.page_size, tmpl
             )
     return TailorResult(
         out_dir=od, req=JobRequirement(), gap=GapReport(), tailored=tr,
-        warnings=[], files=files, pdf_engine=pdf_engine,
+        warnings=[], files=files, pdf_engine=pdf_engine, template=tmpl,
     )

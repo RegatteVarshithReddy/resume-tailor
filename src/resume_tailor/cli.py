@@ -53,6 +53,7 @@ def _record_application(paths: Paths, result) -> str:
         missing=[m.skill for m in g.missing],
         match_score=(result.match.score if result.match else None),
         variant_chosen=(result.variants[0].angle if result.variants else ""),
+        template=result.template,
     )
 
 
@@ -120,6 +121,19 @@ def models() -> None:
     if current and current not in MODEL_CHOICES:
         typer.echo(f"\n  settings.model is '{current}' (custom id — passed straight to the engine)")
     typer.echo("\n  Set a default in profile/settings.yaml (model:) or override per run with --model.")
+
+
+@app.command()
+def templates() -> None:
+    """List the resume template choices for --template / the dashboard picker."""
+    from .render_docx import DEFAULT_TEMPLATE, RESUME_TEMPLATES
+
+    current = (Settings.load().resume_template or DEFAULT_TEMPLATE).strip().lower()
+    for key, style in RESUME_TEMPLATES.items():
+        mark = typer.style("  ← current", fg=typer.colors.CYAN) if key == current else ""
+        typer.echo(f"  {key:9} {style.label}{mark}")
+    typer.echo("\n  Set a default in profile/settings.yaml (resume_template:), override per run "
+               "with --template, or change it per application from its page (re-render).")
 
 
 @app.command()
@@ -295,6 +309,9 @@ def tailor(
         None, "--review-rounds", help="Self-critique/revise passes (default from settings; 0 = off)."),
     variants: Optional[str] = typer.Option(
         None, "--variants", help="Comma list of angles (aggressive,conservative,ic,lead) -> comparison."),
+    template: Optional[str] = typer.Option(
+        None, "--template", help="standard | compact | detailed (default from settings; "
+        "see `resume-tailor templates`)."),
 ) -> None:
     """Generate the tailored resume + cover letter (docx + pdf), a gap report,
     a coverage map and a match score."""
@@ -316,7 +333,7 @@ def tailor(
             company=company, role=role, engine_name=engine, model=model,
             aggressive=not conservative, max_bullets=bullets,
             make_pdf=not no_pdf, out_dir=out,
-            review_rounds=review_rounds, variants=angle_list,
+            review_rounds=review_rounds, variants=angle_list, template=template,
             progress=lambda m: typer.secho(f"  · {m}", fg=typer.colors.BRIGHT_BLACK),
         )
     except Exception as e:  # noqa: BLE001
@@ -374,13 +391,15 @@ def tailor(
 def render(
     tailored: Path = typer.Argument(..., help="Path to a tailored_profile.yaml to re-render."),
     no_pdf: bool = typer.Option(False, "--no-pdf"),
+    template: Optional[str] = typer.Option(
+        None, "--template", help="standard | compact | detailed (default from settings)."),
 ) -> None:
     """Re-render docx/pdf from an edited tailored_profile.yaml."""
     from .pipeline import rerender
 
     try:
         result = rerender(paths=Paths.resolve(), settings=Settings.load(),
-                          tailored_yaml=str(tailored), make_pdf=not no_pdf)
+                          tailored_yaml=str(tailored), make_pdf=not no_pdf, template=template)
     except Exception as e:  # noqa: BLE001
         _err(str(e))
         return
@@ -444,6 +463,23 @@ def prep(
     if not result.used_llm:
         typer.secho("  deterministic pack (no AI call) — the answers are scaffolding to fill in",
                     fg=typer.colors.YELLOW)
+
+
+@app.command("gmail-auth")
+def gmail_auth() -> None:
+    """One-time Gmail OAuth consent flow (read-only) for the status-suggestion
+    scan. Run this on a machine with a browser — see deploy/DEPLOY.md § Gmail
+    for the one-time Google Cloud Console setup."""
+    from . import emailscan
+
+    try:
+        emailscan.run_local_auth(Paths.resolve())
+    except emailscan.GmailNotConfigured as e:
+        _err(str(e))
+        return
+    typer.secho("✔ Gmail connected — profile/gmail_token.json written.", fg=typer.colors.GREEN)
+    typer.echo("  Deploying? Copy both gmail_client_secret.json and gmail_token.json into "
+               "this app's profile/ on the server — a redeploy never touches that folder.")
 
 
 @app.command()
@@ -510,6 +546,59 @@ def apps_note(app_id: str = typer.Argument(...), text: str = typer.Argument(...)
 
     Store(Paths.resolve().db).update_application(app_id, notes=text)
     typer.secho("saved", fg=typer.colors.GREEN)
+
+
+@apps_app.command("export")
+def apps_export(
+    out: Optional[Path] = typer.Option(None, "--out", help="Write CSV here (default: stdout)."),
+    status: Optional[str] = typer.Option(None, "--status"),
+    profile: Optional[str] = typer.Option(None, "--profile", "-p"),
+) -> None:
+    """Export the tracker to CSV."""
+    import csv
+    import io
+
+    from .store import Store
+    from .webapp import App as _WebApp
+
+    rows = Store(Paths.resolve().db).list_applications(status=status, profile=profile, limit=1_000_000)
+    buf = io.StringIO()
+    w = csv.DictWriter(buf, fieldnames=_WebApp._CSV_FIELDS, extrasaction="ignore")
+    w.writeheader()
+    for a in rows:
+        from .webapp import _fmt_ts
+        row = dict(a)
+        row["created_at"] = _fmt_ts(a["created_at"])
+        row["updated_at"] = _fmt_ts(a["updated_at"])
+        w.writerow(row)
+    if out:
+        out.write_text(buf.getvalue())
+        typer.secho(f"✔ wrote {out}", fg=typer.colors.GREEN)
+    else:
+        typer.echo(buf.getvalue(), nl=False)
+
+
+@apps_app.command("gmail-scan")
+def apps_gmail_scan() -> None:
+    """Scan Gmail for replies about active applications and print suggestions
+    (read-only — confirm with `apps set-status`, this changes nothing itself)."""
+    from . import emailscan
+    from .store import Store
+
+    paths = Paths.resolve()
+    try:
+        suggestions, errors = emailscan.scan_active_applications(paths, Store(paths.db))
+    except emailscan.GmailNotConfigured as e:
+        _err(str(e))
+        return
+    if not suggestions:
+        typer.echo("(no status-changing replies found)")
+    for s in suggestions:
+        typer.secho(f"{s.app_id}  {s.company} / {s.role}", bold=True)
+        typer.echo(f"  {s.current_status} -> {s.suggested_status}   ({s.subject!r})")
+        typer.echo(f"  {s.link}")
+    for e in errors:
+        typer.secho(f"  ! {e}", fg=typer.colors.YELLOW)
 
 
 if __name__ == "__main__":

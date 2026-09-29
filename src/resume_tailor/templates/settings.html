@@ -101,6 +101,14 @@
         <label>Accent color</label>
         <input type="color" name="accent_color" value="{{ s.accent_color }}" style="height:2.3rem;padding:.2rem">
       </div>
+      <div>
+        <label>Default resume template <span class="muted">— dashboard can override per run</span></label>
+        <select name="resume_template">
+          {% for key, label in template_choices %}
+          <option value="{{ key }}" title="{{ label }}" {{ 'selected' if key == s.resume_template }}>{{ key }}</option>
+          {% endfor %}
+        </select>
+      </div>
     </div>
   </div>
 

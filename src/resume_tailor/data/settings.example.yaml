@@ -52,6 +52,11 @@ llm_timeout: 240
 make_pdf: true
 page_size: letter            # letter | a4
 accent_color: "#1F4E79"
+# standard (balanced, ~2 pages) | compact (tight spacing, fewer bullets, aims for
+# 1 page) | detailed (roomier spacing, full bullet history). Dashboard + the
+# app-detail "re-render" form can override this per run. `resume-tailor templates`
+# lists them.
+resume_template: standard
 
 # ── Pipeline ────────────────────────────────────────────────────────────────
 # Self-critique/revise passes after the first draft (0 disables). Each is one

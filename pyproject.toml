@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "resume-tailor"
-version = "0.5.0"
+version = "0.6.0"
 description = "Tailor an end-to-end resume + cover letter to a job requirement — CLI + web dashboard + application tracker, any AI provider, clients and work durations stay locked."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -34,6 +34,11 @@ dependencies = [
 
 [project.optional-dependencies]
 api = ["anthropic>=0.40"]          # only for `--engine anthropic` (native SDK)
+gmail = [                          # only for `gmail-auth` / the Gmail status-suggestion scan
+    "google-auth-oauthlib>=1.2",
+    "google-auth-httplib2>=0.2",
+    "google-api-python-client>=2.140",
+]
 dev = ["pytest>=8", "ruff>=0.6"]
 
 [project.urls]

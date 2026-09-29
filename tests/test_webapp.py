@@ -78,3 +78,34 @@ def test_settings_test_button_ok_with_mock(home):
         "do": ["test:mock"],
     })
     assert banner.startswith("✓ mock OK")
+
+
+def test_tailor_job_records_the_chosen_template(home):
+    from resume_tailor.jobs import _run_tailor_job
+
+    paths, settings = Paths.resolve(home), Settings.load(home)
+    store = Store(paths.db)
+    jid = store.create_job("tailor", {})
+    params = {"jd_text": "Senior Backend Engineer\nMust have: Python.\n", "template": "compact"}
+    _run_tailor_job(jid, store, paths, settings, params)   # run synchronously, no thread pool
+    job = store.get_job(jid)
+    assert job["state"] == "done", job.get("error")
+    saved = store.get_application(job["app_id"])
+    assert saved["template"] == "compact"
+
+
+def test_export_csv_includes_template_column(home):
+    app = _app(home)
+    app.store.create_application(profile="default", company="Acme", role="Eng",
+                                 out_dir=str(home / "outputs" / "a"), template="detailed")
+    csv_bytes = app.export_apps_csv({})
+    text = csv_bytes.decode("utf-8")
+    assert "template" in text.splitlines()[0]
+    assert "detailed" in text
+
+
+def test_gmail_scan_page_shows_setup_instructions_when_not_connected(home):
+    app = _app(home)
+    html = app.page_gmail_scan()
+    assert b"isn't connected" in html
+    assert b"gmail-auth" in html

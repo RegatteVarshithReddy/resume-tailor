@@ -155,6 +155,49 @@ touches `profile/`, `data/` (the tracker DB), or `outputs/`.
 
 ---
 
+## 8. Gmail status suggestions (optional)
+
+The app can scan Gmail (read-only) for replies about your active applications
+and suggest a status — nothing changes until you confirm it on the web page.
+The OAuth consent has to happen on a machine with a browser (your workstation),
+not the headless container, so this is a **one-time local step + a one-time
+file copy to the container**:
+
+1. **Workstation:** `pip install -e '.[gmail]'` (or `pip install
+   'resume-tailor[gmail]'` if you installed from PyPI).
+2. **Google Cloud Console** (<https://console.cloud.google.com>): pick or
+   create a project → **APIs & Services → Library** → enable the **Gmail
+   API** → **APIs & Services → Credentials → Create Credentials → OAuth
+   client ID** → application type **Desktop app**. Download the JSON.
+   - If your tailnet already has a project for another self-hosted app (e.g.
+     Meridian's Calendar OAuth), a **separate** OAuth client in that same
+     project is fine — just enable the Gmail API on it too.
+   - Testing/External consent mode with yourself as a test user is enough;
+     Gmail readonly is a sensitive scope but test-mode apps (≤100 users) don't
+     need Google's verification review.
+3. Save the downloaded file as
+   `~/resume-tailor/profile/gmail_client_secret.json` **on your
+   workstation** — never paste its contents into chat, it's a credential.
+4. `resume-tailor gmail-auth` **on the workstation** (needs a browser) —
+   completes the consent screen and writes
+   `~/resume-tailor/profile/gmail_token.json` next to it.
+5. **Copy both files onto the container** (one time — `profile/` is exactly
+   what `redeploy.sh` never touches, so this survives every future redeploy):
+   ```bash
+   tar czf - -C ~/resume-tailor/profile gmail_client_secret.json gmail_token.json | \
+     ssh root@pve1 'pct exec 210 -- tar xzf - -C /opt/resume-tailor/home/profile'
+   pct exec 210 -- chown rtailor:rtailor \
+     /opt/resume-tailor/home/profile/gmail_client_secret.json \
+     /opt/resume-tailor/home/profile/gmail_token.json
+   ```
+6. Verify: open `https://resume-tailor.<tailnet>.ts.net/apps/gmail-scan` — it
+   should scan instead of showing setup instructions.
+
+The access token in `gmail_token.json` auto-refreshes; if it's ever revoked,
+just redo steps 4–5.
+
+---
+
 ## Notes & troubleshooting
 
 | Thing | Detail |

@@ -18,15 +18,17 @@ _pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="rt-job")
 
 def submit_tailor(store: Store, paths: Paths, settings: Settings, params: dict) -> str:
     """params: profile, jd_text, company, role, aggressive(bool), max_bullets(int),
-    make_pdf(bool), review_rounds(int|None), variants(list[str]), model(str|None)."""
+    make_pdf(bool), review_rounds(int|None), variants(list[str]), model(str|None),
+    template(str|None)."""
     jid = store.create_job("tailor", params)
     _pool.submit(_run_tailor_job, jid, store, paths, settings, params)
     return jid
 
 
-def submit_rerender(store: Store, paths: Paths, settings: Settings, app_id: str) -> str:
-    jid = store.create_job("rerender", {"app_id": app_id})
-    _pool.submit(_run_rerender_job, jid, store, paths, settings, app_id)
+def submit_rerender(store: Store, paths: Paths, settings: Settings, app_id: str,
+                    template: str | None = None) -> str:
+    jid = store.create_job("rerender", {"app_id": app_id, "template": template})
+    _pool.submit(_run_rerender_job, jid, store, paths, settings, app_id, template)
     return jid
 
 
@@ -54,6 +56,7 @@ def _run_tailor_job(jid, store: Store, paths: Paths, settings: Settings, params:
             make_pdf=params.get("make_pdf", True),
             review_rounds=params.get("review_rounds"),
             variants=params.get("variants") or [],
+            template=params.get("template") or None,
             progress=log,
         )
         g = result.gap
@@ -73,6 +76,7 @@ def _run_tailor_job(jid, store: Store, paths: Paths, settings: Settings, params:
             missing=[m.skill for m in g.missing],
             match_score=(result.match.score if result.match else None),
             variant_chosen=(result.variants[0].angle if result.variants else ""),
+            template=result.template,
         )
         store.update_job(jid, state="done", app_id=aid)
         log(f"application {aid} saved")
@@ -101,15 +105,17 @@ def _run_prep_job(jid, store: Store, paths: Paths, settings: Settings, app_id: s
         store.append_job_log(jid, f"ERROR: {e}")
 
 
-def _run_rerender_job(jid, store: Store, paths: Paths, settings: Settings, app_id: str) -> None:
+def _run_rerender_job(jid, store: Store, paths: Paths, settings: Settings, app_id: str,
+                      template: str | None = None) -> None:
     store.update_job(jid, state="running", app_id=app_id)
     try:
         app = store.get_application(app_id)
         if not app:
             raise RuntimeError(f"application {app_id} not found")
         ty = Path(app["out_dir"]) / "tailored_profile.yaml"
-        result = rerender(paths=paths, settings=settings, tailored_yaml=str(ty))
-        store.update_application(app_id, pdf_engine=result.pdf_engine)
+        result = rerender(paths=paths, settings=settings, tailored_yaml=str(ty),
+                          template=template or app.get("template"))
+        store.update_application(app_id, pdf_engine=result.pdf_engine, template=result.template)
         store.update_job(jid, state="done")
         store.append_job_log(jid, "re-rendered")
     except Exception as e:  # noqa: BLE001

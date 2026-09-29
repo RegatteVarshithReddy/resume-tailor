@@ -30,6 +30,7 @@ from .config import (
 from .pipeline import VARIANT_ANGLES
 from .jobs import submit_prep, submit_rerender, submit_tailor
 from .models import CORE_SECTIONS, MasterProfile, SectionSpec
+from .render_docx import DEFAULT_TEMPLATE, RESUME_TEMPLATES, TEMPLATE_LABELS
 from .profile_io import (
     ProfileError,
     create_profile,
@@ -41,6 +42,7 @@ from .profile_io import (
 )
 from .store import STATUSES, Store
 from .webforms import parse_profile_form
+from . import emailscan
 
 _TPL_DIR = Path(__file__).parent / "templates"
 _env = Environment(
@@ -136,6 +138,8 @@ class App:
             picked_variants=set(ui.get("variants") or []),
             model_choices=[(k, v["label"]) for k, v in MODEL_CHOICES.items()],
             model_current=(ui.get("model") or self.settings.model or DEFAULT_MODEL),
+            template_choices=list(TEMPLATE_LABELS.items()),
+            template_current=(ui.get("template") or self.settings.resume_template or DEFAULT_TEMPLATE),
         )
 
     def page_apps(self, qs: dict) -> bytes:
@@ -147,6 +151,29 @@ class App:
             f_status=status, f_profile=profile,
             counts=self.store.counts_by_status(),
         )
+
+    _CSV_FIELDS = [
+        "id", "created_at", "updated_at", "company", "role", "profile", "status", "mode",
+        "template", "match_score", "variant_chosen", "gap_matched", "gap_partial",
+        "gap_missing", "years_required", "years_available", "pdf_engine", "notes",
+    ]
+
+    def export_apps_csv(self, qs: dict) -> bytes:
+        import csv
+        import io
+
+        status = (qs.get("status") or [""])[0] or None
+        profile = (qs.get("profile") or [""])[0] or None
+        apps = self.store.list_applications(status=status, profile=profile, limit=1_000_000)
+        buf = io.StringIO()
+        w = csv.DictWriter(buf, fieldnames=self._CSV_FIELDS, extrasaction="ignore")
+        w.writeheader()
+        for a in apps:
+            row = dict(a)
+            row["created_at"] = _fmt_ts(a["created_at"])
+            row["updated_at"] = _fmt_ts(a["updated_at"])
+            w.writerow(row)
+        return buf.getvalue().encode("utf-8")
 
     def _read_json(self, p: Path) -> dict:
         try:
@@ -191,6 +218,22 @@ class App:
             match=self._read_json(d / "match.json"),
             coverage=self._read_json(d / "coverage.json"),
             variants=variants, missing=missing,
+            template_choices=list(TEMPLATE_LABELS.items()),
+        )
+
+    def page_gmail_scan(self) -> bytes:
+        connected = emailscan.is_connected(self.paths)
+        suggestions, errors, err = [], [], ""
+        if connected:
+            try:
+                suggestions, errors = emailscan.scan_active_applications(self.paths, self.store)
+            except emailscan.GmailNotConfigured as e:
+                connected, err = False, str(e)
+            except Exception as e:  # noqa: BLE001
+                err = f"{type(e).__name__}: {e}"
+        return self.render(
+            "gmail_scan.html", connected=connected, suggestions=suggestions,
+            errors=errors, err=err,
         )
 
     def page_job(self, jid: str) -> bytes | None:
@@ -282,6 +325,7 @@ class App:
             "settings.html",
             rows=self._provider_rows(s, discovered),
             s=s, weights=s.match_weights, page_sizes=["letter", "a4"],
+            template_choices=list(TEMPLATE_LABELS.items()),
             active_engine=s.engine or DEFAULT_ENGINE,
             saved=saved, err=err, banner=banner,
         )
@@ -326,6 +370,7 @@ class App:
             "make_pdf": g("make_pdf", "1") == "1",
             "page_size": g("page_size") or "letter",
             "accent_color": g("accent_color") or "#1F4E79",
+            "resume_template": g("resume_template") if g("resume_template") in RESUME_TEMPLATES else "standard",
             "review_rounds": rounds,
         }
         if len(weights) == 4:
@@ -377,7 +422,9 @@ class App:
             rounds = self.settings.review_rounds
         model = (form.get("model") or [""])[0].strip().lower()
         model = model if model in MODEL_CHOICES else ""
-        save_ui_state({"variants": variants, "model": model}, self.paths.root)
+        template = (form.get("template") or [""])[0].strip().lower()
+        template = template if template in RESUME_TEMPLATES else ""
+        save_ui_state({"variants": variants, "model": model, "template": template}, self.paths.root)
         params = {
             "profile": (form.get("profile") or ["auto"])[0],
             "jd_text": jd,
@@ -389,6 +436,7 @@ class App:
             "review_rounds": rounds,
             "variants": variants,
             "model": model or None,
+            "template": template or None,
         }
         return submit_tailor(self.store, self.paths, self.settings, params)
 
@@ -400,8 +448,10 @@ class App:
     def act_note(self, aid: str, form: dict) -> None:
         self.store.update_application(aid, notes=(form.get("notes") or [""])[0])
 
-    def act_rerender(self, aid: str) -> str:
-        return submit_rerender(self.store, self.paths, self.settings, aid)
+    def act_rerender(self, aid: str, form: dict | None = None) -> str:
+        template = ((form or {}).get("template") or [""])[0].strip().lower()
+        return submit_rerender(self.store, self.paths, self.settings, aid,
+                               template=template if template in RESUME_TEMPLATES else None)
 
     def act_prep(self, aid: str, form: dict | None = None) -> str:
         if not self.store.get_application(aid):
@@ -474,6 +524,11 @@ def make_handler(app: App):
                     return self._send(200, app.page_dashboard())
                 if path == "/apps":
                     return self._send(200, app.page_apps(qs))
+                if path == "/apps/gmail-scan":
+                    return self._send(200, app.page_gmail_scan())
+                if path == "/apps/export.csv":
+                    return self._send(200, app.export_apps_csv(qs), "text/csv; charset=utf-8",
+                                      extra={"Content-Disposition": 'attachment; filename="applications.csv"'})
                 if path == "/profiles":
                     return self._send(200, app.page_profiles())
                 if path == "/settings":
@@ -575,7 +630,7 @@ def make_handler(app: App):
                     return self._redirect(f"/apps/{m.group(1)}")
                 m = re.fullmatch(r"/apps/([A-Za-z0-9_]+)/rerender", path)
                 if m:
-                    jid = app.act_rerender(m.group(1))
+                    jid = app.act_rerender(m.group(1), self._form())
                     return self._redirect(f"/jobs/{jid}")
                 m = re.fullmatch(r"/apps/([A-Za-z0-9_]+)/prep", path)
                 if m:

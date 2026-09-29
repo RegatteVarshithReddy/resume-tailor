@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Gmail scan · resume-tailor{% endblock %}
+{% block body %}
+<p><a href="/apps">← Applications</a></p>
+<h1>Gmail scan</h1>
+<p class="muted">Read-only — searches Gmail for replies about applications still
+<code>applied</code> / <code>screening</code> / <code>interview</code>, and suggests a status
+change. Nothing updates until you click Confirm below.</p>
+
+{% if not connected %}
+<div class="card bad">
+  <h2 style="margin-top:0">Gmail isn't connected</h2>
+  <pre>{{ err }}</pre>
+  <p>One-time setup (see <code>deploy/DEPLOY.md</code> § Gmail):</p>
+  <ol>
+    <li>In Google Cloud Console, enable the <b>Gmail API</b> and create an OAuth client of type
+      <b>Desktop app</b>. Download its JSON.</li>
+    <li>Save it as <code>profile/gmail_client_secret.json</code> (never paste it into chat).</li>
+    <li>On a machine with a browser: <code>resume-tailor gmail-auth</code> — this opens a consent
+      screen and writes <code>profile/gmail_token.json</code>.</li>
+    <li>Copy both files into this app's <code>profile/</code> directory (a redeploy never touches
+      them).</li>
+  </ol>
+</div>
+{% else %}
+
+{% if err %}<div class="card bad"><pre>{{ err }}</pre></div>{% endif %}
+
+{% if errors %}
+<div class="card warn">
+  <b>{{ errors|length }} application(s) couldn't be scanned:</b>
+  <ul style="margin:.4rem 0 0">{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+
+<div class="card">
+{% if suggestions %}
+<table>
+  <tr><th>Company / role</th><th>Current</th><th>Email</th><th>Suggested</th><th></th></tr>
+  {% for s in suggestions %}
+  <tr>
+    <td><a href="/apps/{{ s.app_id }}">{{ s.company }}</a><br><span class="muted">{{ s.role }}</span></td>
+    <td><span class="pill s-{{ s.current_status }}">{{ s.current_status }}</span></td>
+    <td>
+      <a href="{{ s.link }}" target="_blank" rel="noopener">{{ s.subject or "(no subject)" }}</a><br>
+      <span class="muted">{{ s.from_addr }} · {{ s.date }}</span><br>
+      <span class="muted">“{{ s.snippet }}”</span>
+    </td>
+    <td><span class="pill s-{{ s.suggested_status }}">{{ s.suggested_status }}</span></td>
+    <td>
+      <form method="post" action="/apps/{{ s.app_id }}/status">
+        <input type="hidden" name="status" value="{{ s.suggested_status }}">
+        <button class="mini" type="submit">Confirm → {{ s.suggested_status }}</button>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p class="muted">No status-changing replies found for any active application.</p>
+{% endif %}
+</div>
+{% endif %}
+{% endblock %}

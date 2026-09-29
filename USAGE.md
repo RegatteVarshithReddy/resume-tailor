@@ -303,6 +303,7 @@ cover letter in one AI call) → lock invariants → render DOCX + PDF.
 | `--conservative` | off | Only rephrase real experience; don't weave in missing skills |
 | `--review-rounds N` | from settings (`2`) | Self-critique/revise passes after the draft. `0` = classic single draft. |
 | `--variants a,b` | — | Comma list of angles (`aggressive`, `conservative`, `ic`, `lead`) → one subfolder each + `comparison.md` |
+| `--template` | from settings (`standard`) | `standard` \| `compact` \| `detailed` — see `resume-tailor templates` |
 | `--no-pdf` | off | Skip PDF, produce DOCX only (faster) |
 | `--out NAME` | auto | Output subfolder name under `outputs/` |
 
@@ -324,11 +325,25 @@ No documents written — use it to triage before spending a full run.
 | `--no-llm` | Skip the AI; keyword heuristic (instant, rougher; still ranks + finds gates) |
 | `--engine` | Engine for the extraction call |
 
-### `resume-tailor render <tailored_profile.yaml> [--no-pdf]`
+### `resume-tailor render <tailored_profile.yaml> [--no-pdf] [--template T]`
 
 Re-render `resume.docx/pdf`, `resume.txt/md` and `cover_letter.docx/pdf` from an
 edited `tailored_profile.yaml`. **No AI call** — instant. This is how you iterate
-on wording by hand. (`defense.md` is a first-run artifact and is left untouched.)
+on wording by hand, and how you switch an existing run to a different template
+(`--template compact` to squeeze it onto one page). Omit `--template` to keep
+whatever the run last used. (`defense.md` is a first-run artifact and is left
+untouched.) In the web UI this is the **Template** dropdown next to "Re-render"
+on a run's page.
+
+### `resume-tailor templates`
+
+List the resume template presets: `standard` (balanced, ~2 pages), `compact`
+(tighter type + spacing, caps bullets/skills per role, aims for one page), and
+`detailed` (roomier spacing, no bullet cap). These only change type size,
+spacing and per-role caps — a profile's own section order/visibility/`max_items`
+still applies on top. Set a default with `resume_template:` in `settings.yaml`
+or the web **Settings** tab; override per run with `--template` or the
+dashboard's **Template** dropdown.
 
 ### `resume-tailor prep [APP_ID | DIR]`
 
@@ -473,6 +488,38 @@ report, and the final documents all live together.
 
 ---
 
+## 6a. Tracking: CSV export + Gmail status suggestions
+
+**Export.** `resume-tailor apps export [--out FILE] [--status S] [--profile P]`
+dumps the tracker to CSV (company, role, status, template, match score, gaps,
+dates, …); omit `--out` to print to stdout. Same file, one click, on the web
+**Applications** page: **Export CSV** (respects the current status/profile filter).
+
+**Gmail status suggestions** (optional, read-only). Once connected, **Scan Gmail
+for updates** on the Applications page — or `resume-tailor apps gmail-scan` —
+searches Gmail for replies about every application still `applied` /
+`screening` / `interview`, and suggests a status (interview / screening /
+offer / rejected) from the subject + snippet. **Nothing changes until you
+confirm** — click Confirm on the web page, or run
+`resume-tailor apps set-status <id> <status>` yourself.
+
+One-time setup (needs a browser; see `deploy/DEPLOY.md` § Gmail for the full
+walkthrough):
+1. `pip install 'resume-tailor[gmail]'`.
+2. In Google Cloud Console: enable the **Gmail API**, create an OAuth client of
+   type **Desktop app**, download its JSON as `profile/gmail_client_secret.json`
+   (never paste it into chat — it's a credential).
+3. `resume-tailor gmail-auth` — opens a browser consent screen, writes
+   `profile/gmail_token.json`.
+
+Both files live under `profile/`, which a redeploy/`render`/`tailor` never
+touches. The classifier is plain keyword matching (no AI call) — it flags
+"unfortunately… not moving forward" as `rejected`, "schedule a call" as
+`interview`, etc., and leaves anything ambiguous (including plain "we received
+your application" acknowledgements) unclassified rather than guessing.
+
+---
+
 ## 7. Tips & patterns
 
 **Keep JDs and outputs.** `jds/` for inputs, `outputs/` for results (already
@@ -494,6 +541,12 @@ senior requirement; `haiku` for a quick draft you'll hand-edit anyway.
 
 **Faster loop while drafting.** `--no-pdf` on `tailor`, review the `.docx`, then
 do one final `render` (without `--no-pdf`) to get the PDF.
+
+**One page vs. more.** Some portals/recruiters want a strict one-pager;
+others are fine with two. Pick per run with `--template compact` (or the
+dashboard), and re-render an existing run with a different one any time —
+`resume-tailor render <run>/tailored_profile.yaml --template compact` needs no
+new AI call.
 
 **ATS-friendliness.** The layout is single-column, standard headings, real text
 (no tables/text-boxes for content), which parses cleanly in most ATS. Send

@@ -38,7 +38,8 @@ CREATE TABLE IF NOT EXISTS applications (
     notes         TEXT DEFAULT '',
     missing_json  TEXT DEFAULT '[]',
     match_score   REAL,
-    variant_chosen TEXT DEFAULT ''
+    variant_chosen TEXT DEFAULT '',
+    template      TEXT DEFAULT 'standard'
 );
 CREATE TABLE IF NOT EXISTS jobs (
     id          TEXT PRIMARY KEY,
@@ -71,7 +72,8 @@ class Store:
         with self._conn() as c:
             c.executescript(_SCHEMA)
             # additive migrations for DBs created before a column existed
-            for col, decl in (("match_score", "REAL"), ("variant_chosen", "TEXT DEFAULT ''")):
+            for col, decl in (("match_score", "REAL"), ("variant_chosen", "TEXT DEFAULT ''"),
+                              ("template", "TEXT DEFAULT 'standard'")):
                 try:
                     c.execute(f"ALTER TABLE applications ADD COLUMN {col} {decl}")
                 except sqlite3.OperationalError:
@@ -110,6 +112,7 @@ class Store:
             "missing_json": json.dumps(fields.get("missing", [])),
             "match_score": fields.get("match_score"),
             "variant_chosen": fields.get("variant_chosen", ""),
+            "template": fields.get("template") or "standard",
         }
         cols = ", ".join(row)
         ph = ", ".join(f":{k}" for k in row)

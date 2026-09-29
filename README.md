@@ -23,6 +23,11 @@ client names and start/end dates from your master profile.
   on the Settings tab.
 - **Multiple master profiles** (e.g. Backend vs Data vs Platform); "Auto" routes a
   JD to the best-fitting one by required years + role.
+- **Resume templates** — `standard` (~2 pages), `compact` (tighter type +
+  spacing, fewer bullets, aims for one page) or `detailed` — picked per run or
+  re-rendered later with no new AI call.
+- **CSV export** of the application tracker, and optional **Gmail status
+  suggestions** (read-only — you confirm every status change).
 - Optional one-box **Proxmox LXC + Tailscale** self-host — [`deploy/DEPLOY.md`](deploy/DEPLOY.md).
 
 <p align="center">
@@ -145,11 +150,25 @@ resume-tailor apps list [--status applied] [--profile ai-engineer]
 resume-tailor apps show <id>
 resume-tailor apps set-status <id> interview      # draft|applied|screening|interview|offer|rejected|archived
 resume-tailor apps note <id> "recruiter call 9/12"
+resume-tailor apps export [--out FILE]            # CSV — same as the web "Export CSV" button
+resume-tailor apps gmail-scan                     # optional, see "Gmail status suggestions" below
 ```
 
 The web app (`resume-tailor web`) is the friendlier view: submit a JD, watch the
 job run live, download the files, read the match score + coverage map, set status,
-keep notes, re-render.
+keep notes, re-render (optionally with a different template).
+
+### Gmail status suggestions (optional, read-only)
+
+**Scan Gmail for updates** on the Applications page (or `resume-tailor apps
+gmail-scan`) searches Gmail for replies about applications still `applied` /
+`screening` / `interview`, and suggests interview / screening / offer / rejected
+from the subject + snippet — a plain keyword match, no AI call. **Nothing changes
+until you confirm** the suggestion. One-time setup: `pip install
+'resume-tailor[gmail]'`, enable the Gmail API + create a **Desktop app** OAuth
+client in Google Cloud Console, save its JSON as `profile/gmail_client_secret.json`,
+then `resume-tailor gmail-auth` (opens a browser). Full walkthrough in
+[`deploy/DEPLOY.md`](deploy/DEPLOY.md) § Gmail.
 
 ### How a run works
 
@@ -218,8 +237,9 @@ resume-tailor render outputs/acme_senior-java-engineer_2026-09-08/tailored_profi
 Edit them on the web **Settings** tab, or in `profile/settings.yaml` (every key is
 documented in [`settings.example.yaml`](src/resume_tailor/data/settings.example.yaml)):
 active provider, per-provider model + base URL, `make_pdf`, `page_size`
-(`letter`/`a4`), `accent_color`, default `review_rounds`, match-score weights.
-Env overrides: `RESUME_TAILOR_ENGINE`, `RESUME_TAILOR_MODEL`, `RESUME_TAILOR_HOME`.
+(`letter`/`a4`), `accent_color`, default `resume_template`, default `review_rounds`,
+match-score weights. Env overrides: `RESUME_TAILOR_ENGINE`, `RESUME_TAILOR_MODEL`,
+`RESUME_TAILOR_HOME`.
 
 <p align="center">
   <img src="docs/settings.png" alt="resume-tailor Settings tab — pick an AI provider, model, base URL and API key" width="820">
@@ -262,3 +282,11 @@ then Professional Summary, Technical Skills, Professional Experience
 Tune fonts/spacing/heading rules in `src/resume_tailor/render_docx.py`; the PDF
 fallback in `render_pdf.py` mirrors the same layout. If you have a required
 house template, share it and it can be wired in as the renderer.
+
+Three named **templates** (`RESUME_TEMPLATES` in `render_docx.py`) trade density
+for page count without touching that structure — `standard` (default),
+`compact` (smaller type, tighter spacing, caps bullets/skills per role — aims
+for one page), `detailed` (roomier spacing, no cap). Pick one per run
+(`--template` / dashboard dropdown), set a default (`resume_template:` in
+settings), or change an existing run's later with `resume-tailor render
+--template …` / the app page's Re-render form.

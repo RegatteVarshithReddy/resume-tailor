@@ -7,6 +7,7 @@
   <span class="pill s-{{ app.status }}">{{ app.status }}</span>
   <span class="chip">{{ app.profile }}</span>
   <span class="chip">{{ app.mode }}</span>
+  <span class="chip">template: {{ app.template or "standard" }}</span>
   <span class="chip">pdf: {{ app.pdf_engine or "none" }}</span>
   {% if app.variant_chosen %}<span class="chip">variant: {{ app.variant_chosen }}</span>{% endif %}
   <span class="muted"> · {{ app.created_at | timestamp }} · {{ app.id }}</span>
@@ -109,6 +110,12 @@
       <p class="muted">No files found at <code>{{ app.out_dir }}</code>.</p>
     {% endfor %}
     <form method="post" action="/apps/{{ app.id }}/rerender">
+      <label>Template</label>
+      <select name="template">
+        {% for key, label in template_choices %}
+        <option value="{{ key }}" title="{{ label }}" {{ 'selected' if key == (app.template or 'standard') }}>{{ key }}</option>
+        {% endfor %}
+      </select>
       <button class="secondary" type="submit">Re-render docs from tailored_profile.yaml</button>
     </form>
   </div>
