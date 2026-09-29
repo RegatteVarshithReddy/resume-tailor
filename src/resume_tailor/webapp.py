@@ -40,6 +40,7 @@ from .profile_io import (
     rename_profile,
     save_master,
 )
+from .stats import DAY_CHOICES, DEFAULT_DAYS, compute as compute_stats
 from .store import STATUSES, Store
 from .webforms import parse_profile_form
 from . import emailscan
@@ -220,6 +221,17 @@ class App:
             variants=variants, missing=missing,
             template_choices=list(TEMPLATE_LABELS.items()),
         )
+
+    def page_stats(self, qs: dict) -> bytes:
+        try:
+            days = int((qs.get("days") or [DEFAULT_DAYS])[0])
+        except ValueError:
+            days = DEFAULT_DAYS
+        if days not in DAY_CHOICES:
+            days = min(DAY_CHOICES, key=lambda d: abs(d - days))
+        rows = self.store.list_submitted()
+        stats = compute_stats(rows, self.store.counts_by_status(), days)
+        return self.render("stats.html", s=stats, days=days, day_choices=DAY_CHOICES)
 
     def page_gmail_scan(self) -> bytes:
         connected = emailscan.is_connected(self.paths)
@@ -524,6 +536,8 @@ def make_handler(app: App):
                     return self._send(200, app.page_dashboard())
                 if path == "/apps":
                     return self._send(200, app.page_apps(qs))
+                if path == "/apps/stats":
+                    return self._send(200, app.page_stats(qs))
                 if path == "/apps/gmail-scan":
                     return self._send(200, app.page_gmail_scan())
                 if path == "/apps/export.csv":

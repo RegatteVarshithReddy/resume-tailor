@@ -26,8 +26,9 @@ client names and start/end dates from your master profile.
 - **Resume templates** — `standard` (~2 pages), `compact` (tighter type +
   spacing, fewer bullets, aims for one page) or `detailed` — picked per run or
   re-rendered later with no new AI call.
-- **CSV export** of the application tracker, and optional **Gmail status
-  suggestions** (read-only — you confirm every status change).
+- **CSV export** of the application tracker, optional **Gmail status
+  suggestions** (read-only — you confirm every status change), and a **daily
+  submissions chart** (open vs. closed) on the tracker.
 - Optional one-box **Proxmox LXC + Tailscale** self-host — [`deploy/DEPLOY.md`](deploy/DEPLOY.md).
 
 <p align="center">
@@ -152,7 +153,18 @@ resume-tailor apps set-status <id> interview      # draft|applied|screening|inte
 resume-tailor apps note <id> "recruiter call 9/12"
 resume-tailor apps export [--out FILE]            # CSV — same as the web "Export CSV" button
 resume-tailor apps gmail-scan                     # optional, see "Gmail status suggestions" below
+resume-tailor apps stats [--days 30]              # daily submissions, open vs. closed
 ```
+
+### Submission stats
+
+The **Stats** link on the Applications page charts daily submissions (tracked
+runs no longer left in `draft`) over the last 7/14/30/60/90 days, split into
+**open** (applied, screening, interview, offer) and **closed** (rejected or
+archived) — plus an all-time "still open" headline count. `resume-tailor apps
+stats` prints the same breakdown as a terminal bar chart. No JS or chart
+library — the web chart is server-rendered inline SVG with native hover
+tooltips and a plain-HTML table fallback.
 
 The web app (`resume-tailor web`) is the friendlier view: submit a JD, watch the
 job run live, download the files, read the match score + coverage map, set status,

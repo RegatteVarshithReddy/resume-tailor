@@ -578,6 +578,32 @@ def apps_export(
         typer.echo(buf.getvalue(), nl=False)
 
 
+@apps_app.command("stats")
+def apps_stats(days: int = typer.Option(30, "--days", help="7 | 14 | 30 | 60 | 90")) -> None:
+    """Daily submission counts, split into still-open vs closed (rejected/archived)."""
+    from .stats import DAY_CHOICES, compute as compute_stats
+    from .store import Store
+
+    if days not in DAY_CHOICES:
+        days = min(DAY_CHOICES, key=lambda d: abs(d - days))
+    store = Store(Paths.resolve().db)
+    s = compute_stats(store.list_submitted(), store.counts_by_status(), days)
+    typer.secho(f"Submitted (all-time): {s.all_submitted}   "
+               f"Still open: {s.all_open}   Closed: {s.all_closed}", bold=True)
+    typer.echo(f"\nLast {days} days — {s.window_submitted} submitted "
+              f"({s.window_open} open, {s.window_closed} closed):\n")
+    width = 30
+    peak = max((b.total for b in s.buckets), default=0) or 1
+    for b in s.buckets:
+        open_w = round(b.open / peak * width)
+        closed_w = round(b.closed / peak * width)
+        bar = typer.style("█" * open_w, fg=typer.colors.GREEN) + \
+            typer.style("█" * closed_w, fg=typer.colors.BRIGHT_BLACK)
+        typer.echo(f"  {b.day.isoformat()}  {bar}  {b.total}")
+    typer.echo(f"\n  {typer.style('█ open', fg=typer.colors.GREEN)}   "
+              f"{typer.style('█ closed', fg=typer.colors.BRIGHT_BLACK)}")
+
+
 @apps_app.command("gmail-scan")
 def apps_gmail_scan() -> None:
     """Scan Gmail for replies about active applications and print suggestions

@@ -488,12 +488,21 @@ report, and the final documents all live together.
 
 ---
 
-## 6a. Tracking: CSV export + Gmail status suggestions
+## 6a. Tracking: CSV export, submission stats + Gmail status suggestions
 
 **Export.** `resume-tailor apps export [--out FILE] [--status S] [--profile P]`
 dumps the tracker to CSV (company, role, status, template, match score, gaps,
 dates, …); omit `--out` to print to stdout. Same file, one click, on the web
 **Applications** page: **Export CSV** (respects the current status/profile filter).
+
+**Daily submissions chart.** The **Stats** link on the Applications page (or
+`resume-tailor apps stats [--days 30]`) buckets every submitted application
+(anything past `draft`) by the day it was tracked, over a 7/14/30/60/90-day
+window, split into **open** (applied/screening/interview/offer) and **closed**
+(rejected/archived) — plus a headline "still open" count that's always
+all-time, not windowed. The web chart is a server-rendered inline SVG (no JS,
+no chart library) with a hover tooltip per bar and a "View as table" fallback;
+the CLI prints the same split as a terminal bar chart.
 
 **Gmail status suggestions** (optional, read-only). Once connected, **Scan Gmail
 for updates** on the Applications page — or `resume-tailor apps gmail-scan` —

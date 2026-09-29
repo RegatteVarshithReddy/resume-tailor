@@ -167,6 +167,18 @@ class Store:
             rows = c.execute(q, args).fetchall()
         return {r["status"]: r["n"] for r in rows}
 
+    def list_submitted(self, since_ts: float | None = None) -> list[dict]:
+        """Applications actually submitted (status != 'draft'), oldest first.
+        Only `created_at`/`status` — used for the daily-submissions chart."""
+        q = "SELECT created_at, status FROM applications WHERE status != 'draft'"
+        args: list[Any] = []
+        if since_ts is not None:
+            q += " AND created_at >= ?"
+            args.append(since_ts)
+        q += " ORDER BY created_at ASC"
+        with self._conn() as c:
+            return [dict(r) for r in c.execute(q, args).fetchall()]
+
     # -- jobs --------------------------------------------------------
     def create_job(self, kind: str, params: dict) -> str:
         jid = new_id("job_")

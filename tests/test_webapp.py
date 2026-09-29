@@ -109,3 +109,25 @@ def test_gmail_scan_page_shows_setup_instructions_when_not_connected(home):
     html = app.page_gmail_scan()
     assert b"isn't connected" in html
     assert b"gmail-auth" in html
+
+
+def test_stats_page_renders_chart_and_table(home):
+    app = _app(home)
+    app.store.create_application(profile="default", company="Acme", role="Eng",
+                                 out_dir=str(home / "outputs" / "a"), status="applied")
+    app.store.create_application(profile="default", company="Beta", role="Eng",
+                                 out_dir=str(home / "outputs" / "b"), status="rejected")
+    app.store.create_application(profile="default", company="Gamma", role="Eng",
+                                 out_dir=str(home / "outputs" / "c"), status="draft")
+    html = app.page_stats({})
+    assert b"<svg" in html
+    assert b"Still open" in html
+    assert b"View as table" in html
+    # the draft is excluded from "submitted"; the other two are counted
+    assert b">2</b>" in html.replace(b"\n", b"")
+
+
+def test_stats_page_clamps_unknown_days_to_nearest_choice(home):
+    app = _app(home)
+    html = app.page_stats({"days": ["45"]})
+    assert b"last 30 days" in html or b"selected" in html

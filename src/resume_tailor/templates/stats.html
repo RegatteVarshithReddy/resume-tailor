@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Stats · resume-tailor{% endblock %}
+{% block body %}
+<p><a href="/apps">← Applications</a></p>
+<h1>Submission stats</h1>
+
+<div class="card">
+  <div class="kv" style="grid-template-columns:auto 1fr auto 1fr auto 1fr;max-width:640px">
+    <div>Submitted (all-time)</div><div><b>{{ s.all_submitted }}</b></div>
+    <div>Still open</div><div><b class="ok">{{ s.all_open }}</b></div>
+    <div>Closed</div><div><b class="muted">{{ s.all_closed }}</b></div>
+  </div>
+  <p class="muted" style="margin:.6rem 0 0">"Submitted" = tracked runs no longer left in
+  <code>draft</code>. "Closed" = rejected or archived; everything else still open
+  (applied, screening, interview, offer).</p>
+</div>
+
+<div class="card">
+  <form method="get" action="/apps/stats" class="row" style="align-items:flex-end">
+    <div style="max-width:220px">
+      <label>Window</label>
+      <select name="days" onchange="this.form.submit()">
+        {% for d in day_choices %}
+        <option value="{{ d }}" {{ 'selected' if d == days }}>last {{ d }} days</option>
+        {% endfor %}
+      </select>
+    </div>
+  </form>
+
+  <div style="display:flex;gap:1.2rem;align-items:center;margin:.8rem 0 .4rem">
+    <span style="display:inline-flex;gap:.4rem;align-items:center">
+      <span style="width:10px;height:10px;border-radius:2px;background:var(--ok);display:inline-block"></span>
+      Open
+    </span>
+    <span style="display:inline-flex;gap:.4rem;align-items:center">
+      <span style="width:10px;height:10px;border-radius:2px;background:var(--closed);display:inline-block"></span>
+      Closed
+    </span>
+    <span class="muted">· {{ s.window_submitted }} submitted in this window
+      ({{ s.window_open }} open, {{ s.window_closed }} closed)</span>
+  </div>
+
+  {% if s.chart.has_data %}
+  <svg viewBox="0 0 {{ s.chart.width }} {{ s.chart.height }}" style="width:100%;height:auto" role="img"
+       aria-label="Daily submissions, last {{ days }} days, split into open and closed">
+    {% for y, label in s.chart.gridlines %}
+    <line x1="{{ s.chart.plot_left }}" x2="{{ s.chart.plot_right }}" y1="{{ y }}" y2="{{ y }}"
+          stroke="var(--border)" stroke-width="1"/>
+    <text x="{{ s.chart.plot_left - 6 }}" y="{{ y + 3 }}" text-anchor="end" font-size="10"
+          fill="var(--muted)">{{ label }}</text>
+    {% endfor %}
+    {% for bar in s.chart.bars %}
+    <g>
+      <title>{{ bar.tooltip }}</title>
+      {% if bar.open_h > 0 %}
+      <rect x="{{ bar.x }}" y="{{ bar.open_y }}" width="{{ bar.width }}" height="{{ bar.open_h }}"
+            rx="2" style="fill:var(--ok)"/>
+      {% endif %}
+      {% if bar.closed_h > 0 %}
+      <rect x="{{ bar.x }}" y="{{ bar.closed_y }}" width="{{ bar.width }}" height="{{ bar.closed_h }}"
+            rx="2" style="fill:var(--closed)"/>
+      {% endif %}
+    </g>
+    {% if bar.show_label %}
+    <text x="{{ bar.x + bar.width / 2 }}" y="{{ s.chart.baseline_y + 14 }}" text-anchor="middle"
+          font-size="10" fill="var(--muted)">{{ bar.label }}</text>
+    {% endif %}
+    {% endfor %}
+  </svg>
+  {% else %}
+  <p class="muted">No submissions tracked in the last {{ days }} days.</p>
+  {% endif %}
+
+  <details style="margin-top:.8rem">
+    <summary class="muted">View as table</summary>
+    <table style="margin-top:.5rem">
+      <tr><th>Date</th><th>Open</th><th>Closed</th><th>Total</th></tr>
+      {% for b in s.buckets %}
+      <tr><td>{{ b.day.isoformat() }}</td><td>{{ b.open }}</td><td>{{ b.closed }}</td><td>{{ b.total }}</td></tr>
+      {% endfor %}
+    </table>
+  </details>
+</div>
+{% endblock %}
